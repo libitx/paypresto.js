@@ -4,6 +4,10 @@ import api from './api'
 
 // Constants
 const DUST_LIMIT = 546 + 1;
+const HTTP_ORIGIN = process.env.NODE_ENV === 'development' ?
+  'http://localhost:4000' :
+  'https://www.paypresto.co';
+
 
 // Default miner rates
 // TODO - make configurable
@@ -211,6 +215,48 @@ class Presto {
       .catch(err => {
         this.$events.emit('error', err)
       })
+  }
+
+  /**
+   * TODO
+   */
+  mount(el) {
+    window.addEventListener('message', event => {
+      if (event.origin === HTTP_ORIGIN && !!event.data.payload) {
+        this.handleMessage(event.data)
+      }
+    }, false)
+
+    el.mount(this)
+      .then(ui => {
+        debug.call(this, 'Proxypay mounted', ui)
+        this.$ui = ui
+        this.postMessage('handshake')
+        this.postMessage('configure', this.$ui.options)
+      })
+      .catch(err => {
+        this.$events.emit('error', err)
+      })
+
+    return this
+  }
+
+  postMessage(event, payload) {
+    if (!this.$ui) return;
+    this.$ui.$iframe.contentWindow.postMessage({
+      event,
+      payload
+    }, HTTP_ORIGIN)
+  }
+
+  handleMessage({event, payload}) {
+    debug.call(this, 'Iframe msg', event, payload)
+    switch(event) {
+      case 'resize':
+        const { height } = payload
+        this.$ui.$iframe.style.height = height + 'px'
+        break
+    }
   }
 
   /**
