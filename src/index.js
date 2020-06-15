@@ -5,6 +5,13 @@ import api from './api'
 // Constants
 const DUST_LIMIT = 546 + 1;
 
+// Default miner rates
+// TODO - make configurable
+const minerRates = {
+  data: 0.5,
+  standard: 0.5
+}
+
 // Presto default options
 const defaults = {
   inputs: [],
@@ -88,6 +95,36 @@ class Presto {
   /**
    * TODO
    */
+  get amount() {
+    const satoshis = this.builder.txOuts
+      .reduce((acc, o) => acc.add(o.valueBn), bsv.Bn(0))
+      .add(estimateFee(this.builder))
+      .toNumber()
+    return Math.max(satoshis, DUST_LIMIT)
+  }
+
+  /**
+   * TODO
+   */
+  get remainingAmount() {
+    const satoshis = this.builder.txIns
+      .map(i => this.builder.uTxOutMap.get(i.txHashBuf, i.txOutNum))
+      .reduce((acc, o) => acc.add(o.valueBn), bsv.Bn(0))
+      .toNumber()
+    return Math.max(this.amount - satoshis, 0)
+  }
+
+  /**
+   * TODO
+   */
+  get script() {
+    // TODO - support additional script types
+    return this.address.toTxOutScript()
+  }
+
+  /**
+   * TODO
+   */
   addInput(input) {
     if (Array.isArray(input)) {
       return input.forEach(i => this.addInput(i));
@@ -136,6 +173,7 @@ class Presto {
   }
 }
 
+
 // TODO
 function dataToScript(data) {
   const script = new bsv.Script()
@@ -159,11 +197,13 @@ function dataToScript(data) {
   return script
 }
 
+
 // Returns satoshis or amount on object as bignum
 function satoshisToBn(data) {
   const val = Number.isInteger(data.satoshis) ? data.satoshis : data.amount;
   return bsv.Bn(val)
 }
+
 
 // TODO
 function isValidInput(data) {
@@ -172,11 +212,54 @@ function isValidInput(data) {
     ['satoshis', 'amount'].some(k => Object.keys(data).includes(k))
 }
 
+
+// Estimate the fee for the given tx builder
+// Uses technique used in minercraft and manic
+function estimateFee(builder, rates = minerRates) {
+  const parts = [
+    {standard: 4}, // version
+    {standard: 4}, // locktime
+    {standard: bsv.VarInt.fromNumber(builder.txIns.length).buf.length},
+    {standard: bsv.VarInt.fromNumber(builder.txOuts.length).buf.length},
+  ]
+
+  if (builder.txIns.length > 0) {
+    builder.txIns.forEach(i => {
+      if (i.script.isPubKeyHashIn()) {
+        parts.push({standard: 148})
+      } else {
+        // TODO - implement fee calculation for other scripts
+        console.warn('Curently unable to calculate fee for custom input script')
+      }
+    })
+  } else {
+    parts.push({standard: 148})
+  }
+
+  builder.txOuts.forEach(o => {
+    const p = {}
+    const type = o.script.chunks[0].opcodenum === 0 && o.script.chunks[0].opcodenum === 106 ? 'data' : 'standard';
+    p[type] = 8 + o.scriptVi.buf.length + o.scriptVi.toNumber()
+    parts.push(p)
+  })
+  
+  const fee = parts.reduce((fee, p) => {
+    return Object
+      .keys(p)
+      .reduce((acc, k) => {
+        return acc + (rates[k] * p[k])
+      }, fee)
+  }, 0)
+  return bsv.Bn(fee)
+}
+
+
 // Private debug
 function debug(...args) {
   if (this.options.debug) {
     console.log(...args)
   }
 }
+
 
 export default Presto

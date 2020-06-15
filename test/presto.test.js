@@ -9,7 +9,7 @@ before(() => {
 })
 
 
-describe('new Presto', () => {
+describe('new Presto()', () => {
   it('creates payment from a WIF key', () => {
     const pay = new Presto({ key: wif })
     assert.deepEqual(pay.privKey, key)
@@ -58,7 +58,7 @@ describe('new Presto', () => {
 })
 
 
-describe('Presto#addInput', () => {
+describe('Presto#addInput()', () => {
   let pay;
   beforeEach(() => {
     pay = new Presto({ key })
@@ -80,7 +80,7 @@ describe('Presto#addInput', () => {
 })
 
 
-describe('Presto#addOutput', () => {
+describe('Presto#addOutput()', () => {
   let pay;
   beforeEach(() => {
     pay = new Presto({ key })
@@ -128,6 +128,80 @@ describe('Presto#address', () => {
   it('returns the public address of the configured key', () => {
     const pay = new Presto({ key })
     assert.equal(pay.address, '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq')
+  })
+})
+
+
+describe('Presto#amount', () => {
+  it('defaults to minimum dust limit', () => {
+    const pay = new Presto({ key })
+    assert.equal(pay.amount, 547)
+  })
+
+  it('calculates accurate fee when no inputs have been added', () => {
+    const pay = new Presto({
+      key,
+      outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
+    })
+    assert.equal(pay.amount, 1096)
+  })
+
+  it('calculates accurate fee when input has been added', () => {
+    const pay = new Presto({
+      key,
+      inputs: [{
+        txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
+        vout: 0,
+        satoshis: 15399,
+        script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
+      }],
+      outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
+    })
+    assert.equal(pay.amount, 1096)
+  })
+})
+
+
+describe('Presto#remainingAmount', () => {
+  let pay;
+  beforeEach(() => {
+    pay = new Presto({
+      key,
+      outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
+    })
+  })
+
+  it('defaults to same as #amount', () => {
+    assert.equal(pay.remainingAmount, 1096)
+  })
+
+  it('calculates remaining unfunded satoshis', () => {
+    pay.addInput({
+      txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
+      vout: 0,
+      satoshis: 600,
+      script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
+    })
+    assert.equal(pay.remainingAmount, 496)
+  })
+
+  it('returns zero if tx funded', () => {
+    pay.addInput({
+      txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
+      vout: 0,
+      satoshis: 2000,
+      script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
+    })
+    assert.equal(pay.remainingAmount, 0)
+  })
+})
+
+
+describe('Presto#script', () => {
+  it('returns p2p funding script for invoice', () => {
+    const pay = new Presto({ key })
+    assert.instanceOf(pay.script, bsv.Script)
+    assert.deepEqual(pay.script.chunks[2].buf, pay.address.hashBuf)
   })
 })
 
