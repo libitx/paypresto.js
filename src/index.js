@@ -54,7 +54,10 @@ class Presto {
     this.addOutput(this.options.outputs)
     this.addInput(this.options.inputs)
 
-    debug.call(this, 'Proxypay', this.address, { inputs: this.inputs, outputs: this.outputs })
+    debug.call(this, 'Presto', this.address, {
+      inputs: this.inputs,
+      outputs: this.outputs
+    })
   }
 
   /**
@@ -88,17 +91,17 @@ class Presto {
   addInput(input) {
     if (Array.isArray(input)) {
       return input.forEach(i => this.addInput(i));
-    } else if (input.constructor.name === 'TxIn') {
-      this.builder.txIns.push(input)
-    } else if (input.txid) {
+    } else if (isValidInput(input)) {
       this.builder.inputFromPubKeyHash(
         Buffer.from(input.txid, 'hex'),
         Number.isInteger(input.vout) ? input.vout : input.outputIndex,
         bsv.TxOut.fromProperties(
-          bsv.Bn(input.satoshis),
+          satoshisToBn(input),
           bsv.Script.fromHex(input.script)
         )
       )
+    } else {
+      throw new Error('Invalid TxIn params')
     }
     return this
   }
@@ -109,23 +112,25 @@ class Presto {
   addOutput(output) {
     if (Array.isArray(output)) {
       return output.forEach(o => this.addOutput(o));
-    } else if (output.constructor.name === 'TxOut') {
+    } else if (output.constructor === bsv.TxOut) {
       this.builder.txOuts.push(output)
     } else if (output.script) {
       this.builder.outputToScript(
-        bsv.Bn(output.satoshis),
+        satoshisToBn(output),
         bsv.Script.fromHex(output.script)
       )
     } else if (output.data) {
       this.builder.outputToScript(
-        bsv.Bn(output.satoshis),
+        satoshisToBn(output),
         dataToScript(output.data)
       )
     } else if (output.to) {
       this.builder.outputToAddress(
-        bsv.Bn(output.satoshis),
+        satoshisToBn(output),
         new bsv.Address().fromString(output.to)
       )
+    } else {
+      throw new Error('Invalid TxOut params')
     }
     return this
   }
@@ -152,6 +157,19 @@ function dataToScript(data) {
     }
   })
   return script
+}
+
+// Returns satoshis or amount on object as bignum
+function satoshisToBn(data) {
+  const val = Number.isInteger(data.satoshis) ? data.satoshis : data.amount;
+  return bsv.Bn(val)
+}
+
+// TODO
+function isValidInput(data) {
+  return ['txid', 'script'].every(k => Object.keys(data).includes(k)) &&
+    ['vout', 'outputIndex'].some(k => Object.keys(data).includes(k)) &&
+    ['satoshis', 'amount'].some(k => Object.keys(data).includes(k))
 }
 
 // Private debug

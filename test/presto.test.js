@@ -58,6 +58,72 @@ describe('new Presto', () => {
 })
 
 
+describe('Presto#addInput', () => {
+  let pay;
+  beforeEach(() => {
+    pay = new Presto({ key })
+  })
+
+  it('adds valid UTXO params to the payment', () => {
+    pay.addInput({
+      txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
+      vout: 0,
+      satoshis: 15399,
+      script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
+    })
+    assert.lengthOf(pay.builder.txIns, 1)
+  })
+
+  it('throws error with invalid params', () => {
+    assert.throws(_ => pay.addInput({}), 'Invalid TxIn params')
+  })
+})
+
+
+describe('Presto#addOutput', () => {
+  let pay;
+  beforeEach(() => {
+    pay = new Presto({ key })
+  })
+
+  it('adds pre-built TxOut to the payment', () => {
+    const output = bsv.TxOut.fromProperties(
+      bsv.Bn(15399),
+      bsv.Script.fromHex('76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac')
+    )
+    pay.addOutput(output)
+    assert.lengthOf(pay.builder.txOuts, 1)
+  })
+
+  it('adds output script params to the payment', () => {
+    pay.addOutput({
+      script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac',
+      satoshis: 15399
+    })
+    assert.lengthOf(pay.builder.txOuts, 1)
+  })
+
+  it('adds output data params to the payment', () => {
+    pay.addOutput({
+      data: ['0xeeefef', 'foo', 'bar']
+    })
+    assert.lengthOf(pay.builder.txOuts, 1)
+  })
+
+  it('adds output p2pkh params to the payment', () => {
+    pay.addOutput({
+      to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq',
+      satoshis: 50000
+    })
+    assert.lengthOf(pay.builder.txOuts, 1)
+  })
+
+  it('throws error with invalid params', () => {
+    assert.throws(_ => pay.addOutput({}), 'Invalid TxOut params')
+  })
+})
+
+
 describe('Presto#address', () => {
   it('returns the public address of the configured key', () => {
     const pay = new Presto({ key })
