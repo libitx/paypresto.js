@@ -1,5 +1,7 @@
+import fetch from 'node-fetch'
+
 // Constants
-const BASE_URL = 'http://localhost:4000'
+const BASE_URL = 'https://www.paypresto.co/api'
 
 /**
  * TODO
@@ -9,7 +11,7 @@ export default {
    * TODO
    */
   get(path, options = {}) {
-    return this.request('GET', path, '', options)
+    return this.request('GET', path, null, options)
   },
 
   /**

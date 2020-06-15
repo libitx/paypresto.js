@@ -1,4 +1,5 @@
 import { assert } from 'chai'
+import nock from 'nock'
 import bsv from 'bsv'
 import Presto from '../src/index'
 
@@ -54,6 +55,54 @@ describe('new Presto()', () => {
     })
     assert.isTrue(pay.builder.txIns[0].script.isPubKeyHashIn())
     assert.include(Object.keys(pay.builder.uTxOutMap.toJSON()), '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12:0')
+  })
+})
+
+
+describe('Presto.create()', () => {
+  beforeEach(() => {
+    nock('https://www.paypresto.co')
+      .post('/api/invoices')
+      .once()
+      .replyWithFile(200, 'test/mocks/create-invoice.json', {
+        'Content-Type': 'application/json'
+      })
+  })
+
+  it('inits invoice and emits the invoice event', done => {
+    const pay = Presto.create({
+      key,
+      outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
+    })
+    assert.instanceOf(pay, Presto)
+    pay.on('invoice', invoice => {
+      assert.equal(invoice.id, 'test01')
+      done()
+    })
+  })
+})
+
+
+describe('Presto.load()', () => {
+  beforeEach(() => {
+    nock('https://www.paypresto.co')
+      .get('/api/invoices/test01')
+      .once()
+      .replyWithFile(200, 'test/mocks/create-invoice.json', {
+        'Content-Type': 'application/json'
+      })
+  })
+
+  it('inits invoice and emits the invoice event', done => {
+    const pay = Presto.load('test01', {
+      key,
+      outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
+    })
+    assert.instanceOf(pay, Presto)
+    pay.on('invoice', invoice => {
+      assert.equal(invoice.id, 'test01')
+      done()
+    })
   })
 })
 
@@ -200,8 +249,71 @@ describe('Presto#remainingAmount', () => {
 describe('Presto#script', () => {
   it('returns p2p funding script for invoice', () => {
     const pay = new Presto({ key })
-    assert.instanceOf(pay.script, bsv.Script)
-    assert.deepEqual(pay.script.chunks[2].buf, pay.address.hashBuf)
+    assert.equal(pay.script, '76a91485b55443c7d5b7cd69813136ce428ad861aeb87088ac')
+  })
+})
+
+
+describe('Presto#createInvoice()', () => {
+  let pay;
+  beforeEach(() => {
+    nock('https://www.paypresto.co')
+      .post('/api/invoices')
+      .once()
+      .replyWithFile(200, 'test/mocks/create-invoice.json', {
+        'Content-Type': 'application/json'
+      })
+
+    pay = new Presto({
+      key,
+      outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
+    })
+  })
+
+  it('async attaches the invoice onto the payment', async () => {
+    await pay.createInvoice()
+    assert.isObject(pay.invoice)
+    assert.equal(pay.invoice.id, 'test01')
+  })
+
+  it('emits the invoice event', done => {
+    pay.createInvoice()
+    pay.on('invoice', invoice => {
+      assert.equal(invoice.id, 'test01')
+      done()
+    })
+  })
+})
+
+
+describe('Presto#loadInvoice()', () => {
+  let pay;
+  beforeEach(() => {
+    nock('https://www.paypresto.co')
+      .get('/api/invoices/test01')
+      .once()
+      .replyWithFile(200, 'test/mocks/create-invoice.json', {
+        'Content-Type': 'application/json'
+      })
+
+    pay = new Presto({
+      key,
+      outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
+    })
+  })
+
+  it('async attaches the invoice onto the payment', async () => {
+    await pay.loadInvoice('test01')
+    assert.isObject(pay.invoice)
+    assert.equal(pay.invoice.id, 'test01')
+  })
+
+  it('emits the invoice event', done => {
+    pay.loadInvoice('test01')
+    pay.on('invoice', invoice => {
+      assert.equal(invoice.id, 'test01')
+      done()
+    })
   })
 })
 

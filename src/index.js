@@ -71,18 +71,18 @@ class Presto {
    * TODO
    */
   static create(options) {
-    const pay = new this(options)
-    // /pay.createInvoice()
-    return pay
+    const payment = new this(options)
+    payment.createInvoice()
+    return payment
   }
 
   /**
    * TODO
    */
   static load(id, options) {
-    const pay = new this(options)
-    //pay.loadInvoice(id)
-    return pay
+    const payment = new this(options)
+    payment.loadInvoice(id)
+    return payment
   }
 
   /**
@@ -96,22 +96,22 @@ class Presto {
    * TODO
    */
   get amount() {
-    const satoshis = this.builder.txOuts
+    const value = this.builder.txOuts
       .reduce((acc, o) => acc.add(o.valueBn), bsv.Bn(0))
       .add(estimateFee(this.builder))
       .toNumber()
-    return Math.max(satoshis, DUST_LIMIT)
+    return Math.max(value, DUST_LIMIT)
   }
 
   /**
    * TODO
    */
   get remainingAmount() {
-    const satoshis = this.builder.txIns
+    const value = this.builder.txIns
       .map(i => this.builder.uTxOutMap.get(i.txHashBuf, i.txOutNum))
       .reduce((acc, o) => acc.add(o.valueBn), bsv.Bn(0))
       .toNumber()
-    return Math.max(this.amount - satoshis, 0)
+    return Math.max(this.amount - value, 0)
   }
 
   /**
@@ -119,7 +119,7 @@ class Presto {
    */
   get script() {
     // TODO - support additional script types
-    return this.address.toTxOutScript()
+    return this.address.toTxOutScript().toHex()
   }
 
   /**
@@ -169,6 +169,63 @@ class Presto {
     } else {
       throw new Error('Invalid TxOut params')
     }
+    return this
+  }
+
+  /**
+   * TODO
+   */
+  async createInvoice() {
+    const invoice = {
+      satoshis: this.remainingAmount,
+      script: this.script,
+      description: this.options.description
+    }
+    debug.call(this, 'Creating invoice', invoice)
+
+    return api.post('/invoices', { invoice })
+      .then(({ data }) => {
+        debug.call(this, 'Created invoice', data)
+        this.invoice = data
+        this.$events.emit('invoice', this.invoice)
+        return this
+      })
+      .catch(err => {
+        this.$events.emit('error', err)
+      })
+  }
+
+  /**
+   * TODO
+   */
+  async loadInvoice(invoiceId) {
+    debug.call(this, 'Loading invoice', invoiceId)
+
+    return api.get(`/invoices/${ invoiceId }`)
+      .then(({ data }) => {
+        debug.call(this, 'Loaded invoice', data)
+        this.invoice = data
+        this.$events.emit('invoice', this.invoice)
+        return this
+      })
+      .catch(err => {
+        this.$events.emit('error', err)
+      })
+  }
+
+  /**
+   * TODO
+   */
+  on(event, callback) {
+    this.$events.on(event, callback)
+    return this
+  }
+
+  /**
+   * TODO
+   */
+  once(event, callback) {
+    this.$events.once(event, callback)
     return this
   }
 }
