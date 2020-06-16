@@ -4,7 +4,7 @@
   "description": "TODO",
   "main": "index.js",
   "repository": "https://github.com/libitx/paypresto.js",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "rollup -c rollup.config.js",
     "test": "mocha \"test/**/*.test.js\" --require esm"
