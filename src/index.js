@@ -24,13 +24,16 @@ const defaults = {
 }
 
 /**
- * TODO
+ * Presto class
+ * Create invoices on the PayPresto platform with custom built transactions.
  */
 class Presto {
   /**
-   * TODO
+   * Builds a Presto payment instance.
+   * @param {Object} options Payment options
+   * @constructor
    */
-  constructor(options) {
+  constructor(options = {}) {
     // Build options
     this.options = {
       ...defaults,
@@ -72,32 +75,39 @@ class Presto {
   }
 
   /**
-   * TODO
+   * Builds a Presto payment instance with the given options and creates a new
+   * PayPresto invoice.
+   * @param {Object} options Payment options
+   * @returns {Presto}
    */
   static create(options) {
     const payment = new this(options)
-    payment.createInvoice()
-    return payment
+    return payment.createInvoice()
   }
 
   /**
-   * TODO
+   * Builds a Presto payment instance with the given options and loads an
+   * existing PayPresto invoice.
+   * @param {String} invoiceId Invoice ID
+   * @param {Object} options Payment options
+   * @returns {Presto}
    */
-  static load(id, options) {
+  static load(invoiceId, options) {
     const payment = new this(options)
-    payment.loadInvoice(id)
-    return payment
+    return payment.loadInvoice(invoiceId)
   }
 
   /**
-   * TODO
+   * Returns the payment funding address.
+   * @type {bsv.Address}
    */
   get address() {
     return bsv.Address.fromPrivKey(this.privKey)
   }
 
   /**
-   * TODO
+   * Returns the total amount of sotoshis required to fund the transaction.
+   * @type {Number}
    */
   get amount() {
     const value = this.builder.txOuts
@@ -108,7 +118,8 @@ class Presto {
   }
 
   /**
-   * TODO
+   * Returns the remaining amount of sotoshis required to fund the transaction.
+   * @type {Number}
    */
   get remainingAmount() {
     const value = this.builder.txIns
@@ -119,7 +130,8 @@ class Presto {
   }
 
   /**
-   * TODO
+   * Returns the payment funding script as a hex encoded string.
+   * @type {String}
    */
   get script() {
     // TODO - support additional script types
@@ -127,7 +139,9 @@ class Presto {
   }
 
   /**
-   * TODO
+   * Adds the given input attributes to the payment.
+   * @param {Object} input UTXO input attributes
+   * @returns {Presto}
    */
   addInput(input) {
     if (Array.isArray(input)) {
@@ -148,7 +162,9 @@ class Presto {
   }
 
   /**
-   * TODO
+   * Adds the given output attributes to the payment.
+   * @param {Object} output transaction output attributes
+   * @returns {Presto}
    */
   addOutput(output) {
     if (Array.isArray(output)) {
@@ -177,9 +193,11 @@ class Presto {
   }
 
   /**
-   * TODO
+   * Creates a PayPresto invoice and attaches the invoice object to the payment.
+   * @emits Presto#invoice
+   * @returns {Presto}
    */
-  async createInvoice() {
+  createInvoice() {
     const invoice = {
       satoshis: this.remainingAmount,
       script: this.script,
@@ -187,7 +205,7 @@ class Presto {
     }
     debug.call(this, 'Creating invoice', invoice)
 
-    return api.post('/invoices', { invoice })
+    api.post('/invoices', { invoice })
       .then(({ data }) => {
         debug.call(this, 'Created invoice', data)
         this.invoice = data
@@ -197,15 +215,20 @@ class Presto {
       .catch(err => {
         this.$events.emit('error', err)
       })
+    
+    return this
   }
 
   /**
-   * TODO
+   * Loads a PayPresto invoice and attaches the invoice object to the payment.
+   * @param {String} invoiceId Invoice ID 
+   * @emits Presto#invoice
+   * @returns {Presto}
    */
-  async loadInvoice(invoiceId) {
+  loadInvoice(invoiceId) {
     debug.call(this, 'Loading invoice', invoiceId)
 
-    return api.get(`/invoices/${ invoiceId }`)
+    api.get(`/invoices/${ invoiceId }`)
       .then(({ data }) => {
         debug.call(this, 'Loaded invoice', data)
         this.invoice = data
@@ -215,6 +238,8 @@ class Presto {
       .catch(err => {
         this.$events.emit('error', err)
       })
+
+    return this
   }
 
   /**
@@ -241,6 +266,9 @@ class Presto {
     return this
   }
 
+  /**
+   * TODO
+   */
   postMessage(event, payload) {
     if (!this.$ui) return;
     this.$ui.$iframe.contentWindow.postMessage({
@@ -249,6 +277,9 @@ class Presto {
     }, HTTP_ORIGIN)
   }
 
+  /**
+   * TODO
+   */
   handleMessage({event, payload}) {
     debug.call(this, 'Iframe msg', event, payload)
     switch(event) {
@@ -260,7 +291,10 @@ class Presto {
   }
 
   /**
-   * TODO
+   * Add an event listener for the specified event.
+   * @param {String} event Event name
+   * @param {Function} callback Event listener
+   * @returns {Presto}
    */
   on(event, callback) {
     this.$events.on(event, callback)
@@ -268,7 +302,10 @@ class Presto {
   }
 
   /**
-   * TODO
+   * Add a one-time event listener for the specified event.
+   * @param {String} event Event name
+   * @param {Function} callback Event listener
+   * @returns {Presto}
    */
   once(event, callback) {
     this.$events.once(event, callback)
@@ -277,7 +314,7 @@ class Presto {
 }
 
 
-// TODO
+// Converts the given array of data chunks into a OP_RETURN output script
 function dataToScript(data) {
   const script = new bsv.Script()
   script.writeOpCode(bsv.OpCode.OP_FALSE)
@@ -308,7 +345,7 @@ function satoshisToBn(data) {
 }
 
 
-// TODO
+// Returns true if the given parameters are a valid input UTXO
 function isValidInput(data) {
   return ['txid', 'script'].every(k => Object.keys(data).includes(k)) &&
     ['vout', 'outputIndex'].some(k => Object.keys(data).includes(k)) &&
@@ -357,7 +394,7 @@ function estimateFee(builder, rates = minerRates) {
 }
 
 
-// Private debug
+// Log the given arguments if debug mode enabled
 function debug(...args) {
   if (this.options.debug) {
     console.log(...args)

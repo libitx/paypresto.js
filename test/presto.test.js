@@ -270,15 +270,11 @@ describe('Presto#createInvoice()', () => {
     })
   })
 
-  it('async attaches the invoice onto the payment', async () => {
-    await pay.createInvoice()
-    assert.isObject(pay.invoice)
-    assert.equal(pay.invoice.id, 'test01')
-  })
-
-  it('emits the invoice event', done => {
+  it('emits the invoice event and attaches the inoice to the payment', done => {
     pay.createInvoice()
     pay.on('invoice', invoice => {
+      assert.isObject(pay.invoice)
+      assert.equal(pay.invoice.id, 'test01')
       assert.equal(invoice.id, 'test01')
       done()
     })
@@ -302,15 +298,11 @@ describe('Presto#loadInvoice()', () => {
     })
   })
 
-  it('async attaches the invoice onto the payment', async () => {
-    await pay.loadInvoice('test01')
-    assert.isObject(pay.invoice)
-    assert.equal(pay.invoice.id, 'test01')
-  })
-
-  it('emits the invoice event', done => {
+  it('emits the invoice event and attaches the inoice to the payment', done => {
     pay.loadInvoice('test01')
     pay.on('invoice', invoice => {
+      assert.isObject(pay.invoice)
+      assert.equal(pay.invoice.id, 'test01')
       assert.equal(invoice.id, 'test01')
       done()
     })
