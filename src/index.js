@@ -1,12 +1,14 @@
 import bsv from 'bsv'
 import energy from 'energy'
 import api from './api'
+import embed from './ui/embed'
+
 
 // Constants
 const DUST_LIMIT = 546 + 1;
-const HTTP_ORIGIN = process.env.NODE_ENV === 'development' ?
-  'http://localhost:4000' :
-  'https://www.paypresto.co';
+const HTTP_ORIGIN = process.env.API_HOST === undefined ?
+  'https://www.paypresto.co' :
+  process.env.API_HOST;
 
 
 // Default miner rates
@@ -57,6 +59,7 @@ class Presto {
     // Setup
     this.$events = energy()
     this.invoice = null
+    this.token = null
 
     // Build the tx
     this.builder = new bsv.TxBuilder()
@@ -402,4 +405,4 @@ function debug(...args) {
 }
 
 
-export default Presto
+export { Presto, embed }

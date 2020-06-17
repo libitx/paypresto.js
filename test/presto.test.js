@@ -1,7 +1,7 @@
 import { assert } from 'chai'
 import nock from 'nock'
 import bsv from 'bsv'
-import Presto from '../src/index'
+import { Presto } from '../src/index'
 
 let key, wif;
 before(() => {

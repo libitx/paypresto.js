@@ -1,3 +1,4 @@
+require('dotenv').config()
 import babel from '@rollup/plugin-babel'
 import commonjs from '@rollup/plugin-commonjs'
 import resolve from '@rollup/plugin-node-resolve'
@@ -11,9 +12,9 @@ const base = {
   output: {
     file: 'dist/paypresto.js',
     format: 'umd',
-    name: 'Presto',
+    name: 'PayPresto',
     globals: {
-      bsv: 'bsv'
+      bsv: 'bsvjs'
     }
   },
   external: ['bsv']
@@ -26,7 +27,9 @@ export default [
   merge(base, {
     plugins: [
       resolve({ browser: true }),
-      replace({ 'process.env.NODE_ENV': JSON.stringify('production') }),
+      replace({
+        'process.env.API_HOST': 'undefined'
+      }),
       commonjs(),
       babel({
         exclude: 'node_modules/**',
@@ -43,7 +46,9 @@ export default [
     },
     plugins: [
       resolve({ browser: true }),
-      replace({ 'process.env.NODE_ENV': JSON.stringify('production') }),
+      replace({
+        'process.env.API_HOST': 'undefined'
+      }),
       commonjs(),
       babel({
         exclude: 'node_modules/**',
@@ -61,7 +66,9 @@ export default [
     },
     plugins: [
       resolve({ browser: true }),
-      replace({ 'process.env.NODE_ENV': JSON.stringify('development') }),
+      replace({
+        'process.env.API_HOST': JSON.stringify(process.env.API_HOST)
+      }),
       commonjs(),
       babel({
         exclude: 'node_modules/**',
