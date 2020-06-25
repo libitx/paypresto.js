@@ -4,12 +4,12 @@
 class Embed {
   /**
    * TODO
-   * @param {DOMString} sel CSS selector string
+   * @param {HTMLElement | DOMString} sel CSS selector string
    * @param {Object} options UI options
    * @constructor
    */
-  constructor(sel, options = {}) {
-    this.$el = document.querySelector(sel)
+  constructor(elSel, options = {}) {
+    this.$el = elSel instanceof HTMLElement ? elSel : document.querySelector(sel);
     this.$iframe = document.createElement('iframe')
     this.options = options    
 
@@ -26,6 +26,7 @@ class Embed {
    */
   async mount(payment) {
     this.$iframe.frameBorder = '0'
+    this.$iframe.style.display = 'block'
     this.$iframe.style.width = '100%'
     this.$iframe.style.maxWidth = '760px'
     this.$iframe.style.height = '640px'

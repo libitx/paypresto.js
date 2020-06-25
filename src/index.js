@@ -5,11 +5,10 @@ import embed from './ui/embed'
 
 
 // Constants
-const DUST_LIMIT = 546 + 1;
+const DUST_LIMIT = 546;
 const HTTP_ORIGIN = process.env.API_HOST === undefined ?
   'https://www.paypresto.co' :
   process.env.API_HOST;
-
 
 // Default miner rates
 // TODO - make configurable
@@ -42,19 +41,21 @@ class Presto {
       ...options
     }
 
-    // Set private key
+    // Set keyPair
+    let privKey
     if (this.options.key && this.options.key.constructor === bsv.PrivKey) {
-      this.privKey = options.key
+      privKey = options.key
     } else if (typeof this.options.key === 'string') {
-      this.privKey = bsv.PrivKey.fromWif(options.key)
+      privKey = bsv.PrivKey.fromWif(options.key)
     }
 
     // Validate private key
-    if (!this.privKey || this.privKey.constructor !== bsv.PrivKey) {
+    if (!privKey || privKey.constructor !== bsv.PrivKey) {
       throw new Error('Must initiate Presto with valid private key')
     } else {
-      this.privKey.validate()
+      privKey.validate()
     }
+    this.keyPair = bsv.KeyPair.fromPrivKey(privKey)
 
     // Setup
     this.$events = energy()
@@ -63,6 +64,7 @@ class Presto {
 
     // Build the tx
     this.builder = new bsv.TxBuilder()
+    this.builder.sendDustChangeToFees(true)
     this.builder.setChangeAddress(
       this.options.changeAddress ?
       new bsv.Address().fromString(this.options.changeAddress) :
@@ -105,7 +107,7 @@ class Presto {
    * @type {bsv.Address}
    */
   get address() {
-    return bsv.Address.fromPrivKey(this.privKey)
+    return bsv.Address.fromPrivKey(this.keyPair.privKey)
   }
 
   /**
@@ -117,7 +119,7 @@ class Presto {
       .reduce((acc, o) => acc.add(o.valueBn), bsv.Bn(0))
       .add(estimateFee(this.builder))
       .toNumber()
-    return Math.max(value, DUST_LIMIT)
+    return Math.max(value, DUST_LIMIT + 1)
   }
 
   /**
@@ -151,7 +153,7 @@ class Presto {
       return input.forEach(i => this.addInput(i));
     } else if (isValidInput(input)) {
       this.builder.inputFromPubKeyHash(
-        Buffer.from(input.txid, 'hex'),
+        Buffer.from(input.txid, 'hex').reverse(),
         Number.isInteger(input.vout) ? input.vout : input.outputIndex,
         bsv.TxOut.fromProperties(
           satoshisToBn(input),
@@ -160,6 +162,10 @@ class Presto {
       )
     } else {
       throw new Error('Invalid TxIn params')
+    }
+
+    if (this.remainingAmount <= 0) {
+      this.$events.emit('funded', this)
     }
     return this
   }
@@ -213,7 +219,6 @@ class Presto {
         debug.call(this, 'Created invoice', data)
         this.invoice = data
         this.$events.emit('invoice', this.invoice)
-        return this
       })
       .catch(err => {
         this.$events.emit('error', err)
@@ -236,13 +241,38 @@ class Presto {
         debug.call(this, 'Loaded invoice', data)
         this.invoice = data
         this.$events.emit('invoice', this.invoice)
-        return this
       })
       .catch(err => {
         this.$events.emit('error', err)
       })
 
     return this
+  }
+
+  /**
+   * TODO
+   */
+  async pushTx() {
+    const rawtx = this.getSignedTx()
+    debug.call(this, 'Pushing tx', this.builder.tx.id)
+    this.postMessage('tx.push', { rawtx })
+    return this
+  }
+
+  /**
+   * Builds and signs the tx, returning the rawtx hex string.
+   * @returns {String}
+   */
+  getSignedTx() {
+    if (this.remainingAmount > 0) {
+      throw new Error('Insufficient inputs')
+    }
+
+    this.builder
+      .build({ useAllInputs: true })
+      .signWithKeyPairs([this.keyPair])
+    
+    return this.builder.tx.toHex()
   }
 
   /**
@@ -286,9 +316,20 @@ class Presto {
   handleMessage({event, payload}) {
     debug.call(this, 'Iframe msg', event, payload)
     switch(event) {
+      case 'invoice.status':
+        this.addInput(payload.utxos)
+        break;
+      case 'tx.success':
+        this.$events.emit('success', payload.txid)
+        break;
+      case 'tx.failure':
+        this.$events.emit('error', payload.resultDescription)
+        break;
+      case 'tx.error':
+        this.$events.emit('error', payload.error)
+        break;
       case 'resize':
-        const { height } = payload
-        this.$ui.$iframe.style.height = height + 'px'
+        this.$ui.$iframe.style.height = payload.height + 'px'
         break
     }
   }
@@ -364,6 +405,7 @@ function estimateFee(builder, rates = minerRates) {
     {standard: 4}, // locktime
     {standard: bsv.VarInt.fromNumber(builder.txIns.length).buf.length},
     {standard: bsv.VarInt.fromNumber(builder.txOuts.length).buf.length},
+    {standard: 34} // need to add change output size
   ]
 
   if (builder.txIns.length > 0) {
@@ -381,7 +423,7 @@ function estimateFee(builder, rates = minerRates) {
 
   builder.txOuts.forEach(o => {
     const p = {}
-    const type = o.script.chunks[0].opcodenum === 0 && o.script.chunks[0].opcodenum === 106 ? 'data' : 'standard';
+    const type = o.script.chunks[0].opCodeNum === 0 && o.script.chunks[1].opCodeNum === 106 ? 'data' : 'standard';
     p[type] = 8 + o.scriptVi.buf.length + o.scriptVi.toNumber()
     parts.push(p)
   })
@@ -390,9 +432,13 @@ function estimateFee(builder, rates = minerRates) {
     return Object
       .keys(p)
       .reduce((acc, k) => {
-        return acc + (rates[k] * p[k])
+        const bytes = p[k],
+              rate = rates[k];
+        return acc + Math.ceil(bytes * rate)
       }, fee)
   }, 0)
+
+  console.log('fee', fee, parts)
   return bsv.Bn(fee)
 }
 

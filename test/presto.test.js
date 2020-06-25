@@ -13,12 +13,12 @@ before(() => {
 describe('new Presto()', () => {
   it('creates payment from a WIF key', () => {
     const pay = new Presto({ key: wif })
-    assert.deepEqual(pay.privKey, key)
+    assert.deepEqual(pay.keyPair.privKey, key)
   })
 
   it('creates payment from existing key', () => {
     const pay = new Presto({ key })
-    assert.deepEqual(pay.privKey, key)
+    assert.deepEqual(pay.keyPair.privKey, key)
   })
 
   it('throws error without any key', () => {
@@ -243,6 +243,19 @@ describe('Presto#remainingAmount', () => {
     })
     assert.equal(pay.remainingAmount, 0)
   })
+
+  it('emits the ready event when sufficient inputs added', done => {
+    pay.on('funded', pay => {
+      assert.equal(pay.remainingAmount, 0)
+      done()
+    })
+    pay.addInput({
+      txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
+      vout: 0,
+      satoshis: 2000,
+      script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
+    })
+  })
 })
 
 
@@ -271,13 +284,13 @@ describe('Presto#createInvoice()', () => {
   })
 
   it('emits the invoice event and attaches the inoice to the payment', done => {
-    pay.createInvoice()
     pay.on('invoice', invoice => {
       assert.isObject(pay.invoice)
       assert.equal(pay.invoice.id, 'test01')
       assert.equal(invoice.id, 'test01')
       done()
     })
+    pay.createInvoice()
   })
 })
 
@@ -299,21 +312,73 @@ describe('Presto#loadInvoice()', () => {
   })
 
   it('emits the invoice event and attaches the inoice to the payment', done => {
-    pay.loadInvoice('test01')
     pay.on('invoice', invoice => {
       assert.isObject(pay.invoice)
       assert.equal(pay.invoice.id, 'test01')
       assert.equal(invoice.id, 'test01')
       done()
     })
+    pay.loadInvoice('test01')
   })
 })
 
 
-//describe('test', () => {
-//  it('foo', () => {
-//    let builder = new bsv.TxBuilder()
-//    console.log(builder)
-//    assert.isTrue(true)
+//describe('Presto#pushTx()', () => {
+//  let pay;
+//  beforeEach(() => {
+//    nock('https://merchantapi.taal.com')
+//      .post('/mapi/tx')
+//      .once()
+//      .replyWithFile(200, 'test/mocks/mapi-push.json', {
+//        'Content-Type': 'application/json'
+//      })
+//
+//    nock('https://www.paypresto.co')
+//      .post('/api/invoices/test/tx')
+//      .once()
+//      .replyWithFile(200, 'test/mocks/push-tx.json', {
+//        'Content-Type': 'application/json'
+//      })
+//
+//    pay = new Presto({
+//      key,
+//      inputs: [{txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12', vout: 0, satoshis: 2000, script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'}],
+//      outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
+//    })
+//    pay.invoice = { id: 'test' }
+//  })
+//
+//  it('emits the success event after building and pushing the tx', done => {
+//    pay.on('success', payload => {
+//      assert.equal(payload.txid, '9c8c5cf37f4ad1a82891ff647b13ec968f3ccb44af2d9deaa205b03ab70a81fa')
+//      done()
+//    })
+//    pay.pushTx()
 //  })
 //})
+
+
+describe('Presto#getSignedTx()', () => {
+  let pay;
+  beforeEach(() => {
+    pay = new Presto({
+      key,
+      outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
+    })
+  })
+
+  it('throws error without sufficient input balance', () => {
+    assert.throws(_ => pay.getSignedTx(), 'Insufficient inputs')
+  })
+
+  it('builds, signs and returns rawtx', () => {
+    pay.addInput({
+      txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
+      vout: 0,
+      satoshis: 2000,
+      script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
+    })
+    const rawtx = pay.getSignedTx()
+    assert.match(rawtx, /^[a-f0-9]+$/)
+  })
+})
