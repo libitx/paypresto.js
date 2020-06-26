@@ -1,4 +1,14 @@
-import bsv from 'bsv'
+import {
+  Address,
+  Bn,
+  KeyPair,
+  OpCode,
+  PrivKey,
+  Script,
+  TxBuilder,
+  TxOut,
+  VarInt
+} from 'bsv'
 import energy from 'energy'
 import api from './api'
 import embed from './ui/embed'
@@ -44,19 +54,19 @@ class Presto {
 
     // Set keyPair
     let privKey
-    if (this.options.key && this.options.key.constructor === bsv.PrivKey) {
+    if (this.options.key && this.options.key.constructor === PrivKey) {
       privKey = options.key
     } else if (typeof this.options.key === 'string') {
-      privKey = bsv.PrivKey.fromWif(options.key)
+      privKey = PrivKey.fromWif(options.key)
     }
 
     // Validate private key
-    if (!privKey || privKey.constructor !== bsv.PrivKey) {
+    if (!privKey || privKey.constructor !== PrivKey) {
       throw new Error('Must initiate Presto with valid private key')
     } else {
       privKey.validate()
     }
-    this.keyPair = bsv.KeyPair.fromPrivKey(privKey)
+    this.keyPair = KeyPair.fromPrivKey(privKey)
 
     // Setup
     this.$events = energy()
@@ -64,11 +74,11 @@ class Presto {
     this.token = null
 
     // Build the tx
-    this.builder = new bsv.TxBuilder()
+    this.builder = new TxBuilder()
     this.builder.sendDustChangeToFees(true)
     this.builder.setChangeAddress(
       this.options.changeAddress ?
-      new bsv.Address().fromString(this.options.changeAddress) :
+      new Address().fromString(this.options.changeAddress) :
       this.address
     )
     this.addOutput(this.options.outputs)
@@ -105,10 +115,10 @@ class Presto {
 
   /**
    * Returns the payment funding address.
-   * @type {bsv.Address}
+   * @type {Address}
    */
   get address() {
-    return bsv.Address.fromPrivKey(this.keyPair.privKey)
+    return Address.fromPrivKey(this.keyPair.privKey)
   }
 
   /**
@@ -117,7 +127,7 @@ class Presto {
    */
   get amount() {
     const value = this.builder.txOuts
-      .reduce((acc, o) => acc.add(o.valueBn), bsv.Bn(0))
+      .reduce((acc, o) => acc.add(o.valueBn), Bn(0))
       .add(estimateFee(this.builder, this.options.rates))
       .toNumber()
     return Math.max(value, DUST_LIMIT + 1)
@@ -130,7 +140,7 @@ class Presto {
   get remainingAmount() {
     const value = this.builder.txIns
       .map(i => this.builder.uTxOutMap.get(i.txHashBuf, i.txOutNum))
-      .reduce((acc, o) => acc.add(o.valueBn), bsv.Bn(0))
+      .reduce((acc, o) => acc.add(o.valueBn), Bn(0))
       .toNumber()
     return Math.max(this.amount - value, 0)
   }
@@ -156,9 +166,9 @@ class Presto {
       this.builder.inputFromPubKeyHash(
         Buffer.from(input.txid, 'hex').reverse(),
         Number.isInteger(input.vout) ? input.vout : input.outputIndex,
-        bsv.TxOut.fromProperties(
+        TxOut.fromProperties(
           satoshisToBn(input),
-          bsv.Script.fromHex(input.script)
+          Script.fromHex(input.script)
         )
       )
     } else {
@@ -179,12 +189,12 @@ class Presto {
   addOutput(output) {
     if (Array.isArray(output)) {
       return output.forEach(o => this.addOutput(o));
-    } else if (output.constructor === bsv.TxOut) {
+    } else if (output.constructor === TxOut) {
       this.builder.txOuts.push(output)
     } else if (output.script) {
       this.builder.outputToScript(
         satoshisToBn(output),
-        bsv.Script.fromHex(output.script)
+        Script.fromHex(output.script)
       )
     } else if (output.data) {
       this.builder.outputToScript(
@@ -194,7 +204,7 @@ class Presto {
     } else if (output.to) {
       this.builder.outputToAddress(
         satoshisToBn(output),
-        new bsv.Address().fromString(output.to)
+        new Address().fromString(output.to)
       )
     } else {
       throw new Error('Invalid TxOut params')
@@ -369,9 +379,9 @@ class Presto {
 
 // Converts the given array of data chunks into a OP_RETURN output script
 function dataToScript(data) {
-  const script = new bsv.Script()
-  script.writeOpCode(bsv.OpCode.OP_FALSE)
-  script.writeOpCode(bsv.OpCode.OP_RETURN)
+  const script = new Script()
+  script.writeOpCode(OpCode.OP_FALSE)
+  script.writeOpCode(OpCode.OP_RETURN)
   data.forEach(item => {
     // Hex string
     if (typeof item === 'string' && /^0x/i.test(item)) {
@@ -394,7 +404,7 @@ function dataToScript(data) {
 // Returns satoshis or amount on object as bignum
 function satoshisToBn(data) {
   const val = Number.isInteger(data.satoshis) ? data.satoshis : data.amount;
-  return bsv.Bn(val)
+  return Bn(val)
 }
 
 
@@ -412,8 +422,8 @@ function estimateFee(builder, rates = minerRates) {
   const parts = [
     {standard: 4}, // version
     {standard: 4}, // locktime
-    {standard: bsv.VarInt.fromNumber(builder.txIns.length).buf.length},
-    {standard: bsv.VarInt.fromNumber(builder.txOuts.length).buf.length},
+    {standard: VarInt.fromNumber(builder.txIns.length).buf.length},
+    {standard: VarInt.fromNumber(builder.txOuts.length).buf.length},
     // bsv2 fee calc always assumes the output script is used so adds 34 bytes
     // this is a bug really, but requres a change with bsv2 before can be removed here
     // TODO - watch bsv2 to see if this changes. create PR if needed
@@ -450,7 +460,7 @@ function estimateFee(builder, rates = minerRates) {
       }, fee)
   }, 0)
 
-  return bsv.Bn(fee)
+  return Bn(fee)
 }
 
 
