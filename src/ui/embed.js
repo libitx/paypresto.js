@@ -1,9 +1,10 @@
 /**
- * TODO
+ * Embed class
+ * A mount point for embedding Presto instances on a web page.
  */
 class Embed {
   /**
-   * TODO
+   * Initiates an Embed instance
    * @param {HTMLElement | DOMString} sel CSS selector string
    * @param {Object} options UI options
    * @constructor
@@ -19,7 +20,7 @@ class Embed {
   }
 
   /**
-   * TODO
+   * Mounts the embed in the given payment instance once the invoice is loaded.
    * @param {Presto} payment Presto payment instance
    * @async
    * @returns {Promise}
@@ -47,7 +48,6 @@ class Embed {
     })
   }
 }
-
 
 
 export default function(sel, options = {}) {

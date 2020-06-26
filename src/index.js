@@ -11,7 +11,6 @@ const HTTP_ORIGIN = process.env.API_HOST === undefined ?
   process.env.API_HOST;
 
 // Default miner rates
-// TODO - make configurable
 const minerRates = {
   data: 0.5,
   standard: 0.5
@@ -21,8 +20,10 @@ const minerRates = {
 const defaults = {
   inputs: [],
   outputs: [],
+  rates: minerRates,
   debug: false
 }
+
 
 /**
  * Presto class
@@ -117,7 +118,7 @@ class Presto {
   get amount() {
     const value = this.builder.txOuts
       .reduce((acc, o) => acc.add(o.valueBn), bsv.Bn(0))
-      .add(estimateFee(this.builder))
+      .add(estimateFee(this.builder, this.options.rates))
       .toNumber()
     return Math.max(value, DUST_LIMIT + 1)
   }
@@ -250,9 +251,11 @@ class Presto {
   }
 
   /**
-   * TODO
+   * Gets the signed raw transaction and pushes it to miners, via the mount
+   * point window.
+   * @returns {Presto}
    */
-  async pushTx() {
+  pushTx() {
     const rawtx = this.getSignedTx()
     debug.call(this, 'Pushing tx', this.builder.tx.id)
     this.postMessage('tx.push', { rawtx })
@@ -276,16 +279,19 @@ class Presto {
   }
 
   /**
-   * TODO
+   * Mounts the payment in the given mount point. The mount point must be a class
+   * insctance that responds to the `mount()` function.
+   * @param {Embed} point mount point
+   * @returns {Presto}
    */
-  mount(el) {
+  mount(point) {
     window.addEventListener('message', event => {
       if (event.origin === HTTP_ORIGIN && !!event.data.payload) {
         this.handleMessage(event.data)
       }
     }, false)
 
-    el.mount(this)
+    point.mount(this)
       .then(ui => {
         debug.call(this, 'Proxypay mounted', ui)
         this.$ui = ui
@@ -300,7 +306,9 @@ class Presto {
   }
 
   /**
-   * TODO
+   * Posts a message to the mount point window.
+   * @param {String} event Event name
+   * @param {any} payload Event payload
    */
   postMessage(event, payload) {
     if (!this.$ui) return;
@@ -311,7 +319,8 @@ class Presto {
   }
 
   /**
-   * TODO
+   * Handles incoming messages from the mount point
+   * @param {Object} message Event message object
    */
   handleMessage({event, payload}) {
     debug.call(this, 'Iframe msg', event, payload)
@@ -405,7 +414,10 @@ function estimateFee(builder, rates = minerRates) {
     {standard: 4}, // locktime
     {standard: bsv.VarInt.fromNumber(builder.txIns.length).buf.length},
     {standard: bsv.VarInt.fromNumber(builder.txOuts.length).buf.length},
-    {standard: 34} // need to add change output size
+    // bsv2 fee calc always assumes the output script is used so adds 34 bytes
+    // this is a bug really, but requres a change with bsv2 before can be removed here
+    // TODO - watch bsv2 to see if this changes. create PR if needed
+    {standard: 34} 
   ]
 
   if (builder.txIns.length > 0) {
@@ -438,7 +450,6 @@ function estimateFee(builder, rates = minerRates) {
       }, fee)
   }, 0)
 
-  console.log('fee', fee, parts)
   return bsv.Bn(fee)
 }
 

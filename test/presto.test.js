@@ -54,7 +54,7 @@ describe('new Presto()', () => {
       }]
     })
     assert.isTrue(pay.builder.txIns[0].script.isPubKeyHashIn())
-    assert.include(Object.keys(pay.builder.uTxOutMap.toJSON()), '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12:0')
+    assert.include(Object.keys(pay.builder.uTxOutMap.toJSON()), '121a9ac1e082415cc3b8be7d0e44b8964d9e3585dcee05f079f038233714305e:0')
   })
 })
 
@@ -192,7 +192,7 @@ describe('Presto#amount', () => {
       key,
       outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
     })
-    assert.equal(pay.amount, 1096)
+    assert.equal(pay.amount, 1114)
   })
 
   it('calculates accurate fee when input has been added', () => {
@@ -206,7 +206,7 @@ describe('Presto#amount', () => {
       }],
       outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
     })
-    assert.equal(pay.amount, 1096)
+    assert.equal(pay.amount, 1114)
   })
 })
 
@@ -221,7 +221,7 @@ describe('Presto#remainingAmount', () => {
   })
 
   it('defaults to same as #amount', () => {
-    assert.equal(pay.remainingAmount, 1096)
+    assert.equal(pay.remainingAmount, 1114)
   })
 
   it('calculates remaining unfunded satoshis', () => {
@@ -231,7 +231,7 @@ describe('Presto#remainingAmount', () => {
       satoshis: 600,
       script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
     })
-    assert.equal(pay.remainingAmount, 496)
+    assert.equal(pay.remainingAmount, 514)
   })
 
   it('returns zero if tx funded', () => {

@@ -1,0 +1,4 @@
+.env
+dist/paypresto.dev.js
+test/dummy
+yarn-*.log

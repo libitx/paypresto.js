@@ -2,7 +2,8 @@
   "name": "paypresto.js",
   "version": "0.1.0-alpha.1",
   "description": "TODO",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "browser": "dist/paypresto.min.js",
   "repository": "https://github.com/libitx/paypresto.js",
   "license": "Apache-2.0",
   "scripts": {
