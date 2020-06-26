@@ -53,20 +53,18 @@ class Presto {
     }
 
     // Set keyPair
-    let privKey
     if (this.options.key && this.options.key.constructor === PrivKey) {
-      privKey = options.key
+      this.privKey = options.key
     } else if (typeof this.options.key === 'string') {
-      privKey = PrivKey.fromWif(options.key)
+      this.privKey = PrivKey.fromWif(options.key)
     }
 
     // Validate private key
-    if (!privKey || privKey.constructor !== PrivKey) {
+    if (!this.privKey || this.privKey.constructor !== PrivKey) {
       throw new Error('Must initiate Presto with valid private key')
     } else {
-      privKey.validate()
+      this.privKey.validate()
     }
-    this.keyPair = KeyPair.fromPrivKey(privKey)
 
     // Setup
     this.$events = energy()
@@ -118,7 +116,7 @@ class Presto {
    * @type {Address}
    */
   get address() {
-    return Address.fromPrivKey(this.keyPair.privKey)
+    return Address.fromPrivKey(this.privKey)
   }
 
   /**
@@ -281,9 +279,10 @@ class Presto {
       throw new Error('Insufficient inputs')
     }
 
+    const keyPair = KeyPair.fromPrivKey(this.privKey)
     this.builder
       .build({ useAllInputs: true })
-      .signWithKeyPairs([this.keyPair])
+      .signWithKeyPairs([keyPair])
     
     return this.builder.tx.toHex()
   }

@@ -13,12 +13,12 @@ before(() => {
 describe('new Presto()', () => {
   it('creates payment from a WIF key', () => {
     const pay = new Presto({ key: wif })
-    assert.deepEqual(pay.keyPair.privKey, key)
+    assert.deepEqual(pay.privKey, key)
   })
 
   it('creates payment from existing key', () => {
     const pay = new Presto({ key })
-    assert.deepEqual(pay.keyPair.privKey, key)
+    assert.deepEqual(pay.privKey, key)
   })
 
   it('throws error without any key', () => {

@@ -20,7 +20,7 @@ const base = {
   external: ['bsv']
 }
 
-const bannerTxt = 'paypresto.js - v<%= pkg.version %>\n<%= pkg.description %>\n<%= pkg.repository %>\nCopyright © <%= new Date().getFullYear() %> <%= pkg.author %>. Apache-2.0 License'
+const bannerTxt = 'paypresto.js - v<%= pkg.version %>\n<%= pkg.description %>\n<%= pkg.repository %>\nCopyright © <%= new Date().getFullYear() %> Chronos Labs Ltd. Apache-2.0 License'
 
 export default [
   // Production build minimised
