@@ -1,6 +1,6 @@
 {
   "name": "paypresto.js",
-  "version": "0.1.0-alpha.6",
+  "version": "0.1.0-alpha.7",
   "description": "Build data and complex Bitcoin transactions, and fund them from any wallet.",
   "main": "src/index.js",
   "browser": "dist/paypresto.min.js",
