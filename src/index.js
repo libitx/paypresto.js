@@ -341,10 +341,10 @@ class Presto {
         this.$events.emit('success', payload.txid)
         break;
       case 'tx.failure':
-        this.$events.emit('error', payload.resultDescription)
+        this.$events.emit('error', payload.resultDescription || payload.error || payload)
         break;
       case 'tx.error':
-        this.$events.emit('error', payload.error)
+        this.$events.emit('error', payload.error || payload)
         break;
       case 'resize':
         this.$ui.$iframe.style.height = payload.height + 'px'
