@@ -53,14 +53,14 @@ class Presto {
     }
 
     // Set keyPair
-    if (this.options.key && this.options.key.constructor.name === 'PrivKey') {
+    if (this.options.key && this.options.key instanceof PrivKey) {
       this.privKey = this.options.key
     } else if (typeof this.options.key === 'string') {
       this.privKey = PrivKey.fromWif(this.options.key)
     }
 
     // Validate private key
-    if (!this.privKey || this.privKey.constructor.name !== 'PrivKey') {
+    if (!this.privKey || !this.privKey instanceof PrivKey) {
       throw new Error('Must initiate Presto with valid private key')
     } else {
       this.privKey.validate()
@@ -76,7 +76,7 @@ class Presto {
     this.builder.sendDustChangeToFees(true)
     this.builder.setChangeAddress(
       this.options.changeAddress ?
-      new Address().fromString(this.options.changeAddress) :
+      Address.fromString(this.options.changeAddress) :
       this.address
     )
     this.addOutput(this.options.outputs)
@@ -187,7 +187,7 @@ class Presto {
   addOutput(output) {
     if (Array.isArray(output)) {
       return output.forEach(o => this.addOutput(o));
-    } else if (output.constructor.name === 'TxOut') {
+    } else if (output instanceof TxOut) {
       this.builder.txOuts.push(output)
     } else if (output.script) {
       this.builder.outputToScript(
@@ -202,7 +202,7 @@ class Presto {
     } else if (output.to) {
       this.builder.outputToAddress(
         satoshisToBn(output),
-        new Address().fromString(output.to)
+        Address.fromString(output.to)
       )
     } else {
       throw new Error('Invalid TxOut params')
