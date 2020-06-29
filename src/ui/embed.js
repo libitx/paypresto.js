@@ -38,7 +38,8 @@ class Embed {
     }
 
     return new Promise((resolve, reject) => {
-      payment.once('invoice', invoice => {
+      payment.on('invoice', invoice => {
+        if (this.$el.contains(this.$iframe)) resolve(this);
         this.$el.innerHTML = ''
         this.$el.appendChild(this.$iframe)
         this.$iframe.setAttribute('src', invoice.invoice_url)
