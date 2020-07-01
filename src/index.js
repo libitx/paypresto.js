@@ -53,17 +53,15 @@ class Presto {
     }
 
     // Set keyPair
-    if (this.options.key && this.options.key instanceof PrivKey) {
-      this.privKey = this.options.key
-    } else if (typeof this.options.key === 'string') {
+    if (this.options.key && typeof this.options.key === 'string') {
       this.privKey = PrivKey.fromWif(this.options.key)
+    } else {
+      this.privKey = this.options.key
     }
 
     // Validate private key
-    if (!this.privKey || !this.privKey instanceof PrivKey) {
-      throw new Error('Must initiate Presto with valid private key')
-    } else {
-      this.privKey.validate()
+    if (!this.privKey || !this.privKey.validate()) {
+      throw new Error('Must initiate Presto with valid private key') 
     }
 
     // Setup
@@ -140,7 +138,9 @@ class Presto {
       .map(i => this.builder.uTxOutMap.get(i.txHashBuf, i.txOutNum))
       .reduce((acc, o) => acc.add(o.valueBn), Bn(0))
       .toNumber()
-    return Math.max(this.amount - value, 0)
+    
+    const remaining = this.amount - value
+    return remaining <= 0 ? 0 : Math.max(remaining, DUST_LIMIT + 1)
   }
 
   /**
@@ -161,14 +161,26 @@ class Presto {
     if (Array.isArray(input)) {
       return input.forEach(i => this.addInput(i));
     } else if (isValidInput(input)) {
-      this.builder.inputFromPubKeyHash(
-        Buffer.from(input.txid, 'hex').reverse(),
-        Number.isInteger(input.vout) ? input.vout : input.outputIndex,
-        TxOut.fromProperties(
+      const txHashBuf = Buffer.from(input.txid, 'hex').reverse(),
+            vout = Number.isInteger(input.vout) ? input.vout : input.outputIndex;
+
+      // If script is array, then add input from script
+      if (Array.isArray(input.script) && input.script.length == 2) {
+        const txOut = TxOut.fromProperties(
+          satoshisToBn(input),
+          Script.fromHex(input.script[1])
+        )
+        const script = Script.fromHex(input.script[0])
+        this.builder.inputFromScript(txHashBuf, vout, txOut, script[1])
+      
+      // Otherwise add input from pubkeyHash
+      } else {
+        const txOut = TxOut.fromProperties(
           satoshisToBn(input),
           Script.fromHex(input.script)
         )
-      )
+        this.builder.inputFromPubKeyHash(txHashBuf, vout, txOut)
+      }
     } else {
       throw new Error('Invalid TxIn params')
     }
@@ -187,8 +199,8 @@ class Presto {
   addOutput(output) {
     if (Array.isArray(output)) {
       return output.forEach(o => this.addOutput(o));
-    } else if (output instanceof TxOut) {
-      this.builder.txOuts.push(output)
+    //} else if (output instanceof TxOut) {
+    //  this.builder.txOuts.push(output)
     } else if (output.script) {
       this.builder.outputToScript(
         satoshisToBn(output),
