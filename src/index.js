@@ -3,7 +3,7 @@ import {
   KeyPair,
   PrivKey
 } from 'bsv'
-import { Forge } from 'txforge/src'
+import { Forge } from 'txforge'
 import energy from 'energy'
 import api from './api'
 import embed from './ui/embed'
@@ -116,17 +116,16 @@ class Presto {
    * @type {Number}
    */
   get amount() {
-    const value = this.forge.outputSum + this.forge.estimateFee()
-    return Math.max(value, DUST_LIMIT + 1)
+    return this.forge.outputSum + this.forge.estimateFee()
   }
 
   /**
    * Returns the remaining amount of sotoshis required to fund the transaction.
    * @type {Number}
    */
-  get remainingAmount() {
+  get amountDue() {
     const value = this.amount - this.forge.inputSum
-    return value <= 0 ? 0 : Math.max(value, DUST_LIMIT + 1)
+    return Math.max(value, 0)
   }
 
   /**
@@ -145,7 +144,7 @@ class Presto {
    */
   addInput(input) {
     this.forge.addInput(input)
-    if (this.remainingAmount <= 0) {
+    if (this.amountDue <= 0) {
       this.$events.emit('funded', this)
     }
     return this
@@ -168,7 +167,7 @@ class Presto {
    */
   createInvoice() {
     const invoice = {
-      satoshis: this.remainingAmount,
+      satoshis: Math.max(this.amountDue, DUST_LIMIT + 1),
       script: this.script,
       description: this.options.description
     }
@@ -226,7 +225,7 @@ class Presto {
    * @returns {String}
    */
   getSignedTx() {
-    if (this.remainingAmount > 0) {
+    if (this.amountDue > 0) {
       throw new Error('Insufficient inputs')
     }
 

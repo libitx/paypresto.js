@@ -41,7 +41,8 @@ describe('new Presto()', () => {
     assert.equal(pay.forge.outputs[0].satoshis, 50000)
     assert.isTrue(pay.forge.outputs[0].getScript().isPubKeyHashOut())
     assert.equal(pay.forge.outputs[1].satoshis, 0)
-    assert.isTrue(pay.forge.outputs[1].getScript().isSafeDataOut())
+    assert.isTrue(pay.forge.outputs[1].getScript().chunks[0].opCodeNum === bsv.OpCode.OP_FALSE)
+    assert.isTrue(pay.forge.outputs[1].getScript().chunks[1].opCodeNum === bsv.OpCode.OP_RETURN)
   })
 
   it('creates payment with inputs', () => {
@@ -182,11 +183,6 @@ describe('Presto#address', () => {
 
 
 describe('Presto#amount', () => {
-  it('defaults to minimum dust limit', () => {
-    const pay = new Presto({ key })
-    assert.equal(pay.amount, 547)
-  })
-
   it('calculates accurate fee when no inputs have been added', () => {
     const pay = new Presto({
       key,
@@ -211,7 +207,7 @@ describe('Presto#amount', () => {
 })
 
 
-describe('Presto#remainingAmount', () => {
+describe('Presto#amountDue', () => {
   let pay;
   beforeEach(() => {
     pay = new Presto({
@@ -221,7 +217,7 @@ describe('Presto#remainingAmount', () => {
   })
 
   it('defaults to same as #amount', () => {
-    assert.equal(pay.remainingAmount, 1096)
+    assert.equal(pay.amountDue, 1096)
   })
 
   it('calculates remaining unfunded satoshis', () => {
@@ -231,7 +227,7 @@ describe('Presto#remainingAmount', () => {
       satoshis: 600,
       script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
     })
-    assert.equal(pay.remainingAmount, 514)
+    assert.equal(pay.amountDue, 496)
   })
 
   it('returns zero if tx funded', () => {
@@ -241,12 +237,12 @@ describe('Presto#remainingAmount', () => {
       satoshis: 2000,
       script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
     })
-    assert.equal(pay.remainingAmount, 0)
+    assert.equal(pay.amountDue, 0)
   })
 
   it('emits the ready event when sufficient inputs added', done => {
     pay.on('funded', pay => {
-      assert.equal(pay.remainingAmount, 0)
+      assert.equal(pay.amountDue, 0)
       done()
     })
     pay.addInput({
