@@ -1,14 +1,9 @@
 import {
   Address,
-  Bn,
   KeyPair,
-  OpCode,
-  PrivKey,
-  Script,
-  TxBuilder,
-  TxOut,
-  VarInt
+  PrivKey
 } from 'bsv'
+import { Forge } from 'txforge/src'
 import energy from 'energy'
 import api from './api'
 import embed from './ui/embed'
@@ -70,19 +65,18 @@ class Presto {
     this.token = null
 
     // Build the tx
-    this.builder = new TxBuilder()
-    this.builder.sendDustChangeToFees(true)
-    this.builder.setChangeAddress(
-      this.options.changeAddress ?
-      Address.fromString(this.options.changeAddress) :
+    this.forge = new Forge({
+      inputs: this.options.inputs,
+      outputs: this.options.outputs,
+      options: { rates: this.options.rates }
+    })
+    this.forge.changeTo = this.options.changeAddress ?
+      this.options.changeAddress :
       this.address
-    )
-    this.addOutput(this.options.outputs)
-    this.addInput(this.options.inputs)
 
     debug.call(this, 'Presto', this.address, {
-      inputs: this.inputs,
-      outputs: this.outputs
+      inputs: this.forge.inputs,
+      outputs: this.forge.outputs
     })
   }
 
@@ -111,10 +105,10 @@ class Presto {
 
   /**
    * Returns the payment funding address.
-   * @type {Address}
+   * @type {String}
    */
   get address() {
-    return Address.fromPrivKey(this.privKey)
+    return Address.fromPrivKey(this.privKey).toString()
   }
 
   /**
@@ -122,10 +116,7 @@ class Presto {
    * @type {Number}
    */
   get amount() {
-    const value = this.builder.txOuts
-      .reduce((acc, o) => acc.add(o.valueBn), Bn(0))
-      .add(estimateFee(this.builder, this.options.rates))
-      .toNumber()
+    const value = this.forge.outputSum + this.forge.estimateFee()
     return Math.max(value, DUST_LIMIT + 1)
   }
 
@@ -134,13 +125,8 @@ class Presto {
    * @type {Number}
    */
   get remainingAmount() {
-    const value = this.builder.txIns
-      .map(i => this.builder.uTxOutMap.get(i.txHashBuf, i.txOutNum))
-      .reduce((acc, o) => acc.add(o.valueBn), Bn(0))
-      .toNumber()
-    
-    const remaining = this.amount - value
-    return remaining <= 0 ? 0 : Math.max(remaining, DUST_LIMIT + 1)
+    const value = this.amount - this.forge.inputSum
+    return value <= 0 ? 0 : Math.max(value, DUST_LIMIT + 1)
   }
 
   /**
@@ -149,7 +135,7 @@ class Presto {
    */
   get script() {
     // TODO - support additional script types
-    return this.address.toTxOutScript().toHex()
+    return Address.fromString(this.address).toTxOutScript().toHex()
   }
 
   /**
@@ -158,33 +144,7 @@ class Presto {
    * @returns {Presto}
    */
   addInput(input) {
-    if (Array.isArray(input)) {
-      return input.forEach(i => this.addInput(i));
-    } else if (isValidInput(input)) {
-      const txHashBuf = Buffer.from(input.txid, 'hex').reverse(),
-            vout = Number.isInteger(input.vout) ? input.vout : input.outputIndex;
-
-      // If script is array, then add input from script
-      if (Array.isArray(input.script) && input.script.length == 2) {
-        const txOut = TxOut.fromProperties(
-          satoshisToBn(input),
-          Script.fromHex(input.script[1])
-        )
-        const script = Script.fromHex(input.script[0])
-        this.builder.inputFromScript(txHashBuf, vout, txOut, script[1])
-      
-      // Otherwise add input from pubkeyHash
-      } else {
-        const txOut = TxOut.fromProperties(
-          satoshisToBn(input),
-          Script.fromHex(input.script)
-        )
-        this.builder.inputFromPubKeyHash(txHashBuf, vout, txOut)
-      }
-    } else {
-      throw new Error('Invalid TxIn params')
-    }
-
+    this.forge.addInput(input)
     if (this.remainingAmount <= 0) {
       this.$events.emit('funded', this)
     }
@@ -197,28 +157,7 @@ class Presto {
    * @returns {Presto}
    */
   addOutput(output) {
-    if (Array.isArray(output)) {
-      return output.forEach(o => this.addOutput(o));
-    //} else if (output instanceof TxOut) {
-    //  this.builder.txOuts.push(output)
-    } else if (output.script) {
-      this.builder.outputToScript(
-        satoshisToBn(output),
-        Script.fromHex(output.script)
-      )
-    } else if (output.data) {
-      this.builder.outputToScript(
-        satoshisToBn(output),
-        dataToScript(output.data)
-      )
-    } else if (output.to) {
-      this.builder.outputToAddress(
-        satoshisToBn(output),
-        Address.fromString(output.to)
-      )
-    } else {
-      throw new Error('Invalid TxOut params')
-    }
+    this.forge.addOutput(output)
     return this
   }
 
@@ -292,11 +231,11 @@ class Presto {
     }
 
     const keyPair = KeyPair.fromPrivKey(this.privKey)
-    this.builder
+    this.forge
       .build({ useAllInputs: true })
-      .signWithKeyPairs([keyPair])
+      .sign({ keyPair })
     
-    return this.builder.tx.toHex()
+    return this.forge.tx.toHex()
   }
 
   /**
@@ -385,93 +324,6 @@ class Presto {
     this.$events.once(event, callback)
     return this
   }
-}
-
-
-// Converts the given array of data chunks into a OP_RETURN output script
-function dataToScript(data) {
-  const script = new Script()
-  script.writeOpCode(OpCode.OP_FALSE)
-  script.writeOpCode(OpCode.OP_RETURN)
-  data.forEach(item => {
-    // Hex string
-    if (typeof item === 'string' && /^0x/i.test(item)) {
-      script.writeBuffer(Buffer.from(item.slice(2), 'hex'))
-    // Opcode number
-    } else if (typeof item === 'number' || item === null) {
-      script.writeOpCode(Number.isInteger(item) ? item : 0)
-    // Opcode
-    } else if (typeof item === 'object' && item.hasOwnProperty('op')) {
-      script.writeOpCode(item.op)
-    // All else
-    } else {
-      script.writeBuffer(Buffer.from(item))
-    }
-  })
-  return script
-}
-
-
-// Returns satoshis or amount on object as bignum
-function satoshisToBn(data) {
-  const val = Number.isInteger(data.satoshis) ? data.satoshis : data.amount;
-  return Bn(val)
-}
-
-
-// Returns true if the given parameters are a valid input UTXO
-function isValidInput(data) {
-  return ['txid', 'script'].every(k => Object.keys(data).includes(k)) &&
-    ['vout', 'outputIndex'].some(k => Object.keys(data).includes(k)) &&
-    ['satoshis', 'amount'].some(k => Object.keys(data).includes(k))
-}
-
-
-// Estimate the fee for the given tx builder
-// Uses technique used in minercraft and manic
-function estimateFee(builder, rates = minerRates) {
-  const parts = [
-    {standard: 4}, // version
-    {standard: 4}, // locktime
-    {standard: VarInt.fromNumber(builder.txIns.length).buf.length},
-    {standard: VarInt.fromNumber(builder.txOuts.length).buf.length},
-    // bsv2 fee calc always assumes the output script is used so adds 34 bytes
-    // this is a bug really, but requres a change with bsv2 before can be removed here
-    // TODO - watch bsv2 to see if this changes. create PR if needed
-    {standard: 34} 
-  ]
-
-  if (builder.txIns.length > 0) {
-    builder.txIns.forEach(i => {
-      if (i.script.isPubKeyHashIn()) {
-        parts.push({standard: 148})
-      } else {
-        // TODO - implement fee calculation for other scripts
-        console.warn('Curently unable to calculate fee for custom input script')
-      }
-    })
-  } else {
-    parts.push({standard: 148})
-  }
-
-  builder.txOuts.forEach(o => {
-    const p = {}
-    const type = o.script.chunks[0].opCodeNum === 0 && o.script.chunks[1].opCodeNum === 106 ? 'data' : 'standard';
-    p[type] = 8 + o.scriptVi.buf.length + o.scriptVi.toNumber()
-    parts.push(p)
-  })
-  
-  const fee = parts.reduce((fee, p) => {
-    return Object
-      .keys(p)
-      .reduce((acc, k) => {
-        const bytes = p[k],
-              rate = rates[k];
-        return acc + Math.ceil(bytes * rate)
-      }, fee)
-  }, 0)
-
-  return Bn(fee)
 }
 
 

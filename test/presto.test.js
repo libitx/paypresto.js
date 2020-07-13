@@ -37,10 +37,11 @@ describe('new Presto()', () => {
         {data: ['0xeeefef', 'foo', 'bar']}
       ]
     })
-    assert.equal(pay.builder.txOuts[0].valueBn.toNumber(), 50000)
-    assert.isTrue(pay.builder.txOuts[0].script.isPubKeyHashOut())
-    assert.equal(pay.builder.txOuts[1].valueBn.toNumber(), 0)
-    assert.isTrue(pay.builder.txOuts[1].script.isSafeDataOut())
+    assert.lengthOf(pay.forge.outputs, 2)
+    assert.equal(pay.forge.outputs[0].satoshis, 50000)
+    assert.isTrue(pay.forge.outputs[0].getScript().isPubKeyHashOut())
+    assert.equal(pay.forge.outputs[1].satoshis, 0)
+    assert.isTrue(pay.forge.outputs[1].getScript().isSafeDataOut())
   })
 
   it('creates payment with inputs', () => {
@@ -53,8 +54,8 @@ describe('new Presto()', () => {
         script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
       }]
     })
-    assert.isTrue(pay.builder.txIns[0].script.isPubKeyHashIn())
-    assert.include(Object.keys(pay.builder.uTxOutMap.toJSON()), '121a9ac1e082415cc3b8be7d0e44b8964d9e3585dcee05f079f038233714305e:0')
+    assert.lengthOf(pay.forge.inputs, 1)
+    assert.equal(pay.forge.inputs[0].txid, '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12')
   })
 })
 
@@ -113,6 +114,10 @@ describe('Presto#addInput()', () => {
     pay = new Presto({ key })
   })
 
+  xit('adds cast instance input', () => {
+    // TODO
+  })
+
   it('adds valid UTXO params to the payment', () => {
     pay.addInput({
       txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
@@ -120,11 +125,11 @@ describe('Presto#addInput()', () => {
       satoshis: 15399,
       script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
     })
-    assert.lengthOf(pay.builder.txIns, 1)
+    assert.lengthOf(pay.forge.inputs, 1)
   })
 
   it('throws error with invalid params', () => {
-    assert.throws(_ => pay.addInput({}), 'Invalid TxIn params')
+    assert.throws(_ => pay.addInput({}), "Cast type 'unlockingScript' requires 'txid' param")
   })
 })
 
@@ -135,13 +140,8 @@ describe('Presto#addOutput()', () => {
     pay = new Presto({ key })
   })
 
-  xit('adds pre-built TxOut to the payment', () => {
-    const output = bsv.TxOut.fromProperties(
-      bsv.Bn(15399),
-      bsv.Script.fromHex('76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac')
-    )
-    pay.addOutput(output)
-    assert.lengthOf(pay.builder.txOuts, 1)
+  xit('adds cast instance output', () => {
+    // TODO
   })
 
   it('adds output script params to the payment', () => {
@@ -149,14 +149,14 @@ describe('Presto#addOutput()', () => {
       script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac',
       satoshis: 15399
     })
-    assert.lengthOf(pay.builder.txOuts, 1)
+    assert.lengthOf(pay.forge.outputs, 1)
   })
 
   it('adds output data params to the payment', () => {
     pay.addOutput({
       data: ['0xeeefef', 'foo', 'bar']
     })
-    assert.lengthOf(pay.builder.txOuts, 1)
+    assert.lengthOf(pay.forge.outputs, 1)
   })
 
   it('adds output p2pkh params to the payment', () => {
@@ -164,7 +164,7 @@ describe('Presto#addOutput()', () => {
       to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq',
       satoshis: 50000
     })
-    assert.lengthOf(pay.builder.txOuts, 1)
+    assert.lengthOf(pay.forge.outputs, 1)
   })
 
   it('throws error with invalid params', () => {
@@ -192,7 +192,7 @@ describe('Presto#amount', () => {
       key,
       outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
     })
-    assert.equal(pay.amount, 1114)
+    assert.equal(pay.amount, 1096)
   })
 
   it('calculates accurate fee when input has been added', () => {
@@ -206,7 +206,7 @@ describe('Presto#amount', () => {
       }],
       outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
     })
-    assert.equal(pay.amount, 1114)
+    assert.equal(pay.amount, 1096)
   })
 })
 
@@ -221,10 +221,10 @@ describe('Presto#remainingAmount', () => {
   })
 
   it('defaults to same as #amount', () => {
-    assert.equal(pay.remainingAmount, 1114)
+    assert.equal(pay.remainingAmount, 1096)
   })
 
-  xit('calculates remaining unfunded satoshis', () => {
+  it('calculates remaining unfunded satoshis', () => {
     pay.addInput({
       txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
       vout: 0,

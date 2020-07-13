@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "energy": "^0.8.0",
-    "node-fetch": "^2.6.0"
+    "node-fetch": "^2.6.0",
+    "txforge": "^0.1.1"
   },
   "devDependencies": {
     "@babel/core": "^7.10.2",

@@ -2248,6 +2248,11 @@ to-regex-range@^5.0.1:
   dependencies:
     is-number "^7.0.0"
 
+txforge@^0.1.1:
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/txforge/-/txforge-0.1.1.tgz#a61ffdabfbe3ab977781ede3a880e2815956591a"
+  integrity sha512-/kjABjIap9T61SXAVkevwQJ/DdjhpzGVGBDFL7t0LfVPDW6M5wL3N542tNcer4cm7b+cn4d7ztA0oMt9HBvsQw==
+
 type-detect@^4.0.0, type-detect@^4.0.5:
   version "4.0.8"
   resolved "https://registry.yarnpkg.com/type-detect/-/type-detect-4.0.8.tgz#7646fb5f18871cfbb7749e69bd39a6388eb7450c"
