@@ -72,7 +72,7 @@ class Presto {
     })
     this.forge.changeTo = this.options.changeAddress ?
       this.options.changeAddress :
-      this.address
+      this.address.toString()
 
     debug.call(this, 'Presto', this.address, {
       inputs: this.forge.inputs,
@@ -105,10 +105,18 @@ class Presto {
 
   /**
    * Returns the payment funding address.
-   * @type {String}
+   * @type {Address}
    */
   get address() {
-    return Address.fromPrivKey(this.privKey).toString()
+    return Address.fromPrivKey(this.privKey)
+  }
+
+  /**
+   * Returns the payment keyPair.
+   * @type {KeyPair}
+   */
+  get keyPair() {
+    return KeyPair.fromPrivKey(this.privKey)
   }
 
   /**
@@ -134,7 +142,7 @@ class Presto {
    */
   get script() {
     // TODO - support additional script types
-    return Address.fromString(this.address).toTxOutScript().toHex()
+    return this.address.toTxOutScript().toHex()
   }
 
   /**
@@ -221,18 +229,41 @@ class Presto {
   }
 
   /**
-   * Builds and signs the tx, returning the rawtx hex string.
+   * Signs the transaction inputs with the private key. 
+   * Can optionally be given additional signing params.
+   * @param {Object} params Signing params
+   * @returns {Presto}
+   */
+  signTx(params = {}) {
+    this.forge
+      .build()
+      .sign({ keyPair: this.keyPair, ...params })
+
+    return this
+  }
+
+  /**
+   * Signs the transaction input specified by the given `txInNum`.
+   * This is for advanced use where individual inputs require custom signing
+   * params. Must build the tx before using `payment.forge.build()`
+   * @param {Number} txInNum Input index
+   * @param {Object} params Signing params
+   * @returns {Presto}
+   */
+  signTxIn(txInNum, params) {
+    this.forge.signTxIn(txInNum, params)
+    return this
+  }
+
+  /**
+   * Gets the rawtx hex string.
+   * Must be signed first, usgin `signTx()` or `signTxIn()`
    * @returns {String}
    */
-  getSignedTx() {
+  getRawTx() {
     if (this.amountDue > 0) {
       throw new Error('Insufficient inputs')
     }
-
-    const keyPair = KeyPair.fromPrivKey(this.privKey)
-    this.forge
-      .build({ useAllInputs: true })
-      .sign({ keyPair })
     
     return this.forge.tx.toHex()
   }

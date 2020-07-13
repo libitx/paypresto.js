@@ -182,6 +182,14 @@ describe('Presto#address', () => {
 })
 
 
+describe('Presto#keyPair', () => {
+  it('returns the KeyPair of the configured key', () => {
+    const pay = new Presto({ key })
+    assert.equal(pay.keyPair.privKey, key)
+  })
+})
+
+
 describe('Presto#amount', () => {
   it('calculates accurate fee when no inputs have been added', () => {
     const pay = new Presto({
@@ -354,7 +362,17 @@ describe('Presto#loadInvoice()', () => {
 //})
 
 
-describe('Presto#getSignedTx()', () => {
+describe('Presto#signTx()', () => {
+  xit('signs all inputs with the keyPair')
+})
+
+
+describe('Presto#signTxIn()', () => {
+  xit('signs the specified input with the given params')
+})
+
+
+describe('Presto#getRawTx()', () => {
   let pay;
   beforeEach(() => {
     pay = new Presto({
@@ -364,7 +382,7 @@ describe('Presto#getSignedTx()', () => {
   })
 
   it('throws error without sufficient input balance', () => {
-    assert.throws(_ => pay.getSignedTx(), 'Insufficient inputs')
+    assert.throws(_ => pay.getRawTx(), 'Insufficient inputs')
   })
 
   it('builds, signs and returns rawtx', () => {
@@ -374,7 +392,7 @@ describe('Presto#getSignedTx()', () => {
       satoshis: 2000,
       script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
     })
-    const rawtx = pay.getSignedTx()
+    const rawtx = pay.signTx().getRawTx()
     assert.match(rawtx, /^[a-f0-9]+$/)
   })
 })
