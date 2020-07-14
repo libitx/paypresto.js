@@ -17,7 +17,13 @@ const base = {
       bsv: 'bsvjs'
     }
   },
-  external: ['bsv']
+  external: ['bsv'],
+
+  // suppress txforge eval warnings
+  onwarn(warning, warn) {
+    if (warning.id.match(/txforge/)) return
+    warn(warning)
+  }
 }
 
 const bannerTxt = 'paypresto.js - v<%= pkg.version %>\n<%= pkg.description %>\n<%= pkg.repository %>\nCopyright © <%= new Date().getFullYear() %> Chronos Labs Ltd. Apache-2.0 License'

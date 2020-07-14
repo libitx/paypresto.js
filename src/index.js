@@ -117,17 +117,6 @@ class Presto {
   }
 
   /**
-   * Returns the rawtx hex string.
-   * @type {String}
-   */
-  get rawTx() {
-    if (this.amountDue > 0) {
-      debug.call(this, 'Presto', 'Insufficient inputs', this.forge)
-    }
-    return this.forge.tx.toHex()
-  }
-
-  /**
    * Returns the total amount of sotoshis required to fund the transaction.
    * @type {Number}
    */
@@ -225,13 +214,13 @@ class Presto {
   }
 
   /**
-   * Gets the signed raw transaction and pushes it to miners, via the mount
+   * Builds and signs the transactions, and pushes it to miners via the mount
    * point window.
    * @returns {Presto}
    */
   pushTx() {
-    const rawtx = this.getSignedTx()
-    debug.call(this, 'Pushing tx', this.builder.tx.id)
+    const rawtx = this.signTx().getRawTx()
+    debug.call(this, 'Pushing tx', this.forge.tx.id())
     this.postMessage('tx.push', { rawtx })
     return this
   }
@@ -261,6 +250,18 @@ class Presto {
   signTxIn(txInNum, params) {
     this.forge.signTxIn(txInNum, params)
     return this
+  }
+
+  /**
+   * Returns the rawtx hex string. Should be called after `signTx()` or
+   * `signTxIn()`.
+   * @returns {String}
+   */
+  getRawTx() {
+    if (this.amountDue > 0) {
+      debug.call(this, 'Presto', 'Insufficient inputs', this.forge)
+    }
+    return this.forge.tx.toHex()
   }
 
   /**

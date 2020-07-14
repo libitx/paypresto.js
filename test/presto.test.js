@@ -394,22 +394,22 @@ describe('Presto#signTx()', () => {
   })
 
   it('signs all inputs with the keyPair', () => {
-    assert.lengthOf(pay.rawTx, 20)
+    assert.lengthOf(pay.getRawTx(), 20)
     pay.signTx()
-    assert.isAbove(pay.rawTx.length, 20)
-    assert.notMatch(pay.rawTx, /(00){72}.*(00){33}/)
+    assert.isAbove(pay.getRawTx().length, 20)
+    assert.notMatch(pay.getRawTx(), /(00){72}.*(00){33}/)
   })
 
   it('wont sign if given the wrong keypair as params', () => {
     pay.signTx({ keyPair: bsv.KeyPair.fromRandom() })
-    assert.isAbove(pay.rawTx.length, 20)
-    assert.match(pay.rawTx, /(00){72}.*(00){33}/)
+    assert.isAbove(pay.getRawTx().length, 20)
+    assert.match(pay.getRawTx(), /(00){72}.*(00){33}/)
   })
 
   it('signs all inputs when params given to casts', () => {
     pay.signTx({ keyPair })
-    assert.isAbove(pay.rawTx.length, 20)
-    assert.notMatch(pay.rawTx, /(00){72}.*(00){33}/)
+    assert.isAbove(pay.getRawTx().length, 20)
+    assert.notMatch(pay.getRawTx(), /(00){72}.*(00){33}/)
   })
 })
 
@@ -443,13 +443,13 @@ describe('Presto#signTxIn()', () => {
     pay.forge.build()
     pay.signTxIn(0, { keyPair })
     pay.signTxIn(1, { kBuf })
-    assert.isAbove(pay.rawTx.length, 20)
-    assert.notMatch(pay.rawTx, /(00){72}.*(00){33}/)
+    assert.isAbove(pay.getRawTx().length, 20)
+    assert.notMatch(pay.getRawTx(), /(00){72}.*(00){33}/)
   })
 })
 
 
-describe('Presto#rawTx', () => {
+describe('Presto#getRawTx()', () => {
   let pay;
   beforeEach(() => {
     pay = new Presto({
@@ -465,12 +465,12 @@ describe('Presto#rawTx', () => {
   })
 
   it('returns a value even when tx has not been built', () => {
-    assert.equal(pay.rawTx, '01000000000000000000')
+    assert.equal(pay.getRawTx(), '01000000000000000000')
   })
 
   it('returns full rawtx after signing', () => {
     pay.signTx()
-    assert.notEqual(pay.rawTx, '01000000000000000000')
-    assert.match(pay.rawTx, /^[a-f0-9]+$/)
+    assert.notEqual(pay.getRawTx(), '01000000000000000000')
+    assert.match(pay.getRawTx(), /^[a-f0-9]+$/)
   })
 })
