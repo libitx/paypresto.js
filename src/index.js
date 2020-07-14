@@ -74,10 +74,7 @@ class Presto {
       this.options.changeAddress :
       this.address.toString()
 
-    debug.call(this, 'Presto', this.address, {
-      inputs: this.forge.inputs,
-      outputs: this.forge.outputs
-    })
+    debug.call(this, 'Presto', this.address, this.forge)
   }
 
   /**
@@ -117,6 +114,17 @@ class Presto {
    */
   get keyPair() {
     return KeyPair.fromPrivKey(this.privKey)
+  }
+
+  /**
+   * Returns the rawtx hex string.
+   * @type {String}
+   */
+  get rawTx() {
+    if (this.amountDue > 0) {
+      debug.call(this, 'Presto', 'Insufficient inputs', this.forge)
+    }
+    return this.forge.tx.toHex()
   }
 
   /**
@@ -253,19 +261,6 @@ class Presto {
   signTxIn(txInNum, params) {
     this.forge.signTxIn(txInNum, params)
     return this
-  }
-
-  /**
-   * Gets the rawtx hex string.
-   * Must be signed first, usgin `signTx()` or `signTxIn()`
-   * @returns {String}
-   */
-  getRawTx() {
-    if (this.amountDue > 0) {
-      throw new Error('Insufficient inputs')
-    }
-    
-    return this.forge.tx.toHex()
   }
 
   /**

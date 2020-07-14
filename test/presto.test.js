@@ -2,6 +2,8 @@ import { assert } from 'chai'
 import nock from 'nock'
 import bsv from 'bsv'
 import { Presto } from '../src/index'
+import { Cast } from 'txforge'
+import { P2PKH, P2RPH } from 'txforge/casts'
 
 let key, wif;
 before(() => {
@@ -115,8 +117,15 @@ describe('Presto#addInput()', () => {
     pay = new Presto({ key })
   })
 
-  xit('adds cast instance input', () => {
-    // TODO
+  it('adds cast instance input', () => {
+    const cast = Cast.unlockingScript(P2PKH, {
+      txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
+      vout: 0,
+      satoshis: 15399,
+      script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
+    })
+    pay.addInput(cast)
+    assert.lengthOf(pay.forge.inputs, 1)
   })
 
   it('adds valid UTXO params to the payment', () => {
@@ -141,8 +150,13 @@ describe('Presto#addOutput()', () => {
     pay = new Presto({ key })
   })
 
-  xit('adds cast instance output', () => {
-    // TODO
+  it('adds cast instance output', () => {
+    const cast = Cast.lockingScript(P2PKH, {
+      address: bsv.Address.fromString('1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq'),
+      satoshis: 50000
+    })
+    pay.addOutput(cast)
+    assert.lengthOf(pay.forge.outputs, 1)
   })
 
   it('adds output script params to the payment', () => {
@@ -363,36 +377,100 @@ describe('Presto#loadInvoice()', () => {
 
 
 describe('Presto#signTx()', () => {
-  xit('signs all inputs with the keyPair')
-})
-
-
-describe('Presto#signTxIn()', () => {
-  xit('signs the specified input with the given params')
-})
-
-
-describe('Presto#getRawTx()', () => {
-  let pay;
+  let address, keyPair, pay;
   beforeEach(() => {
+    keyPair = bsv.KeyPair.fromPrivKey(key)
+    address = bsv.Address.fromPubKey(keyPair.pubKey)
     pay = new Presto({
       key,
+      inputs: [{
+        txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
+        vout: 0,
+        satoshis: 2000,
+        script: '76a914'+ address.hashBuf.toString('hex') +'88ac'
+      }],
       outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
     })
   })
 
-  it('throws error without sufficient input balance', () => {
-    assert.throws(_ => pay.getRawTx(), 'Insufficient inputs')
+  it('signs all inputs with the keyPair', () => {
+    assert.lengthOf(pay.rawTx, 20)
+    pay.signTx()
+    assert.isAbove(pay.rawTx.length, 20)
+    assert.notMatch(pay.rawTx, /(00){72}.*(00){33}/)
   })
 
-  it('builds, signs and returns rawtx', () => {
-    pay.addInput({
+  it('wont sign if given the wrong keypair as params', () => {
+    pay.signTx({ keyPair: bsv.KeyPair.fromRandom() })
+    assert.isAbove(pay.rawTx.length, 20)
+    assert.match(pay.rawTx, /(00){72}.*(00){33}/)
+  })
+
+  it('signs all inputs when params given to casts', () => {
+    pay.signTx({ keyPair })
+    assert.isAbove(pay.rawTx.length, 20)
+    assert.notMatch(pay.rawTx, /(00){72}.*(00){33}/)
+  })
+})
+
+
+describe('Presto#signTxIn()', () => {
+  let address, kBuf, keyPair, pay;
+  beforeEach(() => {
+    kBuf = Buffer.from('ed7d04e7ec6de2d550992479ad9f52e941049a68cd5b7a24b15659204c78b338', 'hex')
+    keyPair = bsv.KeyPair.fromPrivKey(key)
+    address = bsv.Address.fromPubKey(keyPair.pubKey)
+    pay = new Presto({
+      key,
+      inputs: [{
+        txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
+        vout: 0,
+        satoshis: 2000,
+        script: '76a914'+ address.hashBuf.toString('hex') +'88ac'
+      }],
+      outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
+    })
+  })
+
+  it('signs the specified input with the given params', () => {
+    const cast = Cast.unlockingScript(P2RPH, {
       txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
       vout: 0,
       satoshis: 2000,
-      script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
+      script: '78537f77517f7c7f75a914de7bacce2f3bb02f03773483096ce4a61c28537a88ac'
     })
-    const rawtx = pay.signTx().getRawTx()
-    assert.match(rawtx, /^[a-f0-9]+$/)
+    pay.addInput(cast)
+    pay.forge.build()
+    pay.signTxIn(0, { keyPair })
+    pay.signTxIn(1, { kBuf })
+    assert.isAbove(pay.rawTx.length, 20)
+    assert.notMatch(pay.rawTx, /(00){72}.*(00){33}/)
+  })
+})
+
+
+describe('Presto#rawTx', () => {
+  let pay;
+  beforeEach(() => {
+    pay = new Presto({
+      key,
+      inputs: [{
+        txid: '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12',
+        vout: 0,
+        satoshis: 2000,
+        script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
+      }],
+      outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
+    })
+  })
+
+  it('returns a value even when tx has not been built', () => {
+    assert.equal(pay.rawTx, '01000000000000000000')
+  })
+
+  it('returns full rawtx after signing', () => {
+    pay.signTx()
+    assert.notEqual(pay.rawTx, '01000000000000000000')
+    assert.match(pay.rawTx, /^[a-f0-9]+$/)
   })
 })
