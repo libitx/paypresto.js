@@ -5,78 +5,74 @@ import resolve from '@rollup/plugin-node-resolve'
 import replace from '@rollup/plugin-replace'
 import { terser } from 'rollup-plugin-terser'
 import banner from 'rollup-plugin-banner'
-import merge from 'deepmerge'
-
-const base = {
-  input: 'src/index.js',
-  output: {
-    file: 'dist/paypresto.js',
-    format: 'umd',
-    name: 'PayPresto',
-    globals: {
-      bsv: 'bsvjs'
-    }
-  },
-  external: ['bsv'],
-
-  // suppress txforge eval warnings
-  onwarn(warning, warn) {
-    if (warning.id.match(/txforge/)) return
-    warn(warning)
-  }
-}
-
-const bannerTxt = 'paypresto.js - v<%= pkg.version %>\n<%= pkg.description %>\n<%= pkg.repository %>\nCopyright © <%= new Date().getFullYear() %> Chronos Labs Ltd. Apache-2.0 License'
 
 export default [
-  // Production build minimised
-  merge(base, {
+  /**
+   * Entry: Paypresto Web
+   */
+  {
+    input: 'src/index.js',
+    output: [
+      // 1. Full browser build
+      {
+        file: 'dist/paypresto.js',
+        format: 'umd',
+        name: 'Paypresto',
+        globals: {
+          bsv: 'bsvjs',
+          txforge: 'TxForge'
+        }
+      },
+      // 2. Minimised browser build
+      {
+        file: 'dist/paypresto.min.js',
+        format: 'iife',
+        name: 'Paypresto',
+        globals: {
+          bsv: 'bsvjs',
+          txforge: 'TxForge'
+        },
+        plugins: [
+          terser()
+        ]
+      }
+    ],
+    external: ['bsv', 'txforge'],
     plugins: [
       resolve({ browser: true }),
-      replace({ 'process.env.API_HOST': 'undefined' }),
       commonjs(),
       babel({
         exclude: 'node_modules/**',
         babelHelpers: 'bundled'
       }),
-      banner(bannerTxt)
+      replace({ 'process.env.API_HOST': 'undefined' }),
+      banner('paypresto.js - v<%= pkg.version %>\n<%= pkg.description %>\n<%= pkg.repository %>\nCopyright © <%= new Date().getFullYear() %> Chronos Labs Ltd. Apache-2.0 License')
     ]
-  }),
+  },
 
-  // Production build minimised
-  merge(base, {
-    output: {
-      file: 'dist/paypresto.min.js',
-    },
-    plugins: [
-      resolve({ browser: true }),
-      replace({ 'process.env.API_HOST': 'undefined' }),
-      commonjs(),
-      babel({
-        exclude: 'node_modules/**',
-        babelHelpers: 'bundled'
-      }),
-      terser(),
-      banner(bannerTxt)
-    ]
-  }),
-  
-  // Dev build
-  merge(base, {
+  /**
+   * Entry: Paypresto Dev
+   */
+  {
+    input: 'src/index.js',
     output: {
       file: 'dist/paypresto.dev.js',
+      format: 'iife',
+      name: 'Paypresto',
+      globals: {
+        bsv: 'bsvjs',
+        txforge: 'TxForge'
+      }
     },
+    external: ['bsv', 'txforge'],
     plugins: [
       resolve({ browser: true }),
-      replace({
-        'process.env.API_HOST': JSON.stringify(process.env.API_HOST)
-      }),
       commonjs(),
       babel({
         exclude: 'node_modules/**',
         babelHelpers: 'bundled'
       }),
-      banner(bannerTxt)
+      replace({ 'process.env.API_HOST': JSON.stringify(process.env.API_HOST) })
     ]
-  })
+  }
 ]
