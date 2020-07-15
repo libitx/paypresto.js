@@ -60,7 +60,7 @@ class Presto {
     }
 
     // Setup
-    this.$events = energy()
+    this.$events = new energy()
     this.invoice = null
     this.token = null
 
@@ -214,12 +214,25 @@ class Presto {
   }
 
   /**
-   * Builds and signs the transactions, and pushes it to miners via the mount
-   * point window.
+   * Pushes the tx to miners via the mount point window.
+   * If the tx hasn't been built, it attempts to do so with `signTx()`.
    * @returns {Presto}
    */
   pushTx() {
-    const rawtx = this.signTx().getRawTx()
+    if (this.amountDue > 0) {
+      debug.call(this, 'Presto', 'Insufficient inputs', this.forge)
+      throw new Error('Insufficient inputs')
+    }
+
+    // If needed, attempt to build and sign tx with privKey
+    if (
+      this.forge.tx.txIns.length < this.forge.inputs.length ||
+      this.forge.tx.txOuts.length < this.forge.outputs.length
+    ){
+      this.signTx()
+    }
+
+    const rawtx = this.getRawTx()
     debug.call(this, 'Pushing tx', this.forge.tx.id())
     this.postMessage('tx.push', { rawtx })
     return this
@@ -258,9 +271,6 @@ class Presto {
    * @returns {String}
    */
   getRawTx() {
-    if (this.amountDue > 0) {
-      debug.call(this, 'Presto', 'Insufficient inputs', this.forge)
-    }
     return this.forge.tx.toHex()
   }
 
@@ -272,7 +282,11 @@ class Presto {
    */
   mount(point) {
     window.addEventListener('message', event => {
-      if (event.origin === HTTP_ORIGIN && !!event.data.payload) {
+      if (
+        event.origin === HTTP_ORIGIN &&
+        !!event.data.payload &&
+        event.source === this.$ui.$iframe.contentWindow
+      ) {
         this.handleMessage(event.data)
       }
     }, false)

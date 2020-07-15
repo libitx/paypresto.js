@@ -67,7 +67,7 @@ describe('Presto.create()', () => {
   beforeEach(() => {
     nock('https://www.paypresto.co')
       .post('/api/invoices')
-      .once()
+      .twice()
       .replyWithFile(200, 'test/mocks/create-invoice.json', {
         'Content-Type': 'application/json'
       })

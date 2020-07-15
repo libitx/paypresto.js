@@ -10,12 +10,12 @@ class Embed {
    * @constructor
    */
   constructor(elSel, options = {}) {
-    this.$el = elSel instanceof HTMLElement ? elSel : document.querySelector(sel);
+    this.$el = elSel instanceof HTMLElement ? elSel : document.querySelector(elSel);
     this.$iframe = document.createElement('iframe')
     this.options = options    
 
     if (!this.$el) {
-      throw new Error(`Element '${sel}' not found. Could not mount Proxypay.`)
+      throw new Error(`Element '${elSel}' not found. Could not mount Proxypay.`)
     }
   }
 
