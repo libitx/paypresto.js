@@ -337,6 +337,9 @@ class Presto {
       case 'tx.error':
         this.$events.emit('error', payload.error || payload)
         break;
+      case 'wallet.open':
+        window.location = payload.url
+        break;
       case 'resize':
         this.$ui.$iframe.style.height = payload.height + 'px'
         break
