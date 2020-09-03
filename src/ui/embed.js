@@ -38,14 +38,19 @@ class Embed {
     }
 
     return new Promise((resolve, reject) => {
-      payment.on('invoice', invoice => {
+      const mountIframe = invoice => {
         if (this.$el.contains(this.$iframe)) resolve(this);
         this.$el.innerHTML = ''
         this.$el.appendChild(this.$iframe)
         this.$iframe.setAttribute('src', invoice.invoice_url)
         this.$iframe.onload = _ => resolve(this)
         this.$iframe.onerror = reject
-      })
+      }
+      if (!!payment.invoice) {
+        mountIframe(payment.invoice)
+      } else {
+        payment.on('invoice', invoice => mountIframe(invoice))
+      }
     })
   }
 }
