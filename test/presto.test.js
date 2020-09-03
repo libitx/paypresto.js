@@ -2,7 +2,7 @@ import { assert } from 'chai'
 import nock from 'nock'
 import bsv from 'bsv'
 import { Presto } from '../src/index'
-import { Cast } from 'txforge'
+import { Forge, Cast } from 'txforge'
 import { P2PKH, P2RPH } from 'txforge/casts'
 
 let key, wif;
@@ -59,6 +59,16 @@ describe('new Presto()', () => {
     })
     assert.lengthOf(pay.forge.inputs, 1)
     assert.equal(pay.forge.inputs[0].txid, '5e3014372338f079f005eedc85359e4d96b8440e7dbeb8c35c4182e0c19a1a12')
+  })
+
+  it('creates payment with existing forge instance', () => {
+    const forge = new Forge({
+      outputs: [{data: ['foo', 'bar']}]
+    })
+    const pay = new Presto({ key, forge })
+    assert.lengthOf(pay.forge.outputs, 1)
+    assert.isTrue(pay.forge.outputs[0].getScript().chunks[0].opCodeNum === bsv.OpCode.OP_FALSE)
+    assert.isTrue(pay.forge.outputs[0].getScript().chunks[1].opCodeNum === bsv.OpCode.OP_RETURN)
   })
 })
 

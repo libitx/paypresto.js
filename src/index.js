@@ -64,15 +64,19 @@ class Presto {
     this.invoice = null
     this.token = null
 
-    // Build the tx
-    this.forge = new Forge({
-      inputs: this.options.inputs,
-      outputs: this.options.outputs,
-      options: { rates: this.options.rates }
-    })
-    this.forge.changeTo = this.options.changeAddress ?
-      this.options.changeAddress :
-      this.address.toString()
+    // Build the forge, either from existing instance or given params
+    if (this.options.forge) {
+      this.forge = this.options.forge
+    } else {
+      this.forge = new Forge({
+        inputs: this.options.inputs,
+        outputs: this.options.outputs,
+        options: { rates: this.options.rates }
+      })
+      this.forge.changeTo = this.options.changeAddress ?
+        this.options.changeAddress :
+        this.address.toString()
+    }
 
     debug.call(this, 'Presto', this.address, this.forge)
   }
