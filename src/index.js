@@ -72,7 +72,7 @@ class Presto {
           this.privKey = PrivKey.fromWif(this.options.key)
         } catch(e) { /* Do nothing - raise a useful error below */ }
         
-      } else if (this.options.key.constructor.name === 'PrivKey') {
+      } else if (this.options.key.bn) {
         this.privKey = this.options.key
       }
     }
