@@ -13,22 +13,35 @@ before(() => {
 
 
 describe('new Presto()', () => {
-  it('creates payment from a WIF key', () => {
+  it('initiates with a WIF key', () => {
     const pay = new Presto({ key: wif })
     assert.deepEqual(pay.privKey, key)
   })
 
-  it('creates payment from existing key', () => {
+  it('initiates with an existing key', () => {
     const pay = new Presto({ key })
     assert.deepEqual(pay.privKey, key)
   })
 
-  it('throws error without any key', () => {
-    assert.throws(_ => new Presto(), 'Must initiate Presto with valid private key')
+  it('initiates without any key in simple mode', () => {
+    const pay = new Presto({
+      outputs: [
+        {to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 50000}
+      ]
+    })
+    assert.equal(pay.mode, 'simple')
+  })
+
+  it('throws error without any key in proxypay mode', () => {
+    assert.throws(_ => {
+      new Presto({ outputs: [{data: ['0xeeefef', 'foo', 'bar']}] })
+    }, 'Must initiate Presto with P2PKH outputs only in `simple` mode')
   })
 
   it('throws error with invalid key', () => {
-    assert.throws(_ => new Presto({key: 'NOTAKEY'}))
+    assert.throws(_ => {
+      new Presto({key: 'NOTAKEY'})
+    }, 'Must initiate Presto with valid private key in `proxypay` mode')
   })
 
   it('creates payment with outputs', () => {

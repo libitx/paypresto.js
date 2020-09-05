@@ -47,19 +47,8 @@ class Presto {
       ...options
     }
 
-    // Set keyPair
-    if (this.options.key && typeof this.options.key === 'string') {
-      this.privKey = PrivKey.fromWif(this.options.key)
-    } else {
-      this.privKey = this.options.key
-    }
-
-    // Validate private key
-    if (!this.privKey || !this.privKey.validate()) {
-      throw new Error('Must initiate Presto with valid private key') 
-    }
-
     // Setup
+    this.mode = 'simple'
     this.$events = new energy()
     this.invoice = null
     this.token = null
@@ -73,12 +62,49 @@ class Presto {
         outputs: this.options.outputs,
         options: { rates: this.options.rates }
       })
+    }
+
+    // Set keyPair
+    if (this.options.key) {
+      this.mode = 'proxypay'
+      if (typeof this.options.key === 'string') {
+        try {
+          this.privKey = PrivKey.fromWif(this.options.key)
+        } catch(e) { /* Do nothing - raise a useful error below */ }
+        
+      } else if (this.options.key.constructor.name === 'PrivKey') {
+        this.privKey = this.options.key
+      }
+    }
+
+    // In simple mode validate that every given output is a P2PKH script
+    if (this.mode === 'simple') {
+      if (!this.forge.outputs.every(o => {
+        const s = o.getScript()
+        return  s.chunks[0].opCodeNum === 118 &&
+                s.chunks[1].opCodeNum === 169 &&
+                s.chunks[2].opCodeNum === 20 && s.chunks[2].len === 20 &&
+                s.chunks[3].opCodeNum === 136 &&
+                s.chunks[4].opCodeNum === 172
+      })) {
+        throw new Error('Must initiate Presto with P2PKH outputs only in `simple` mode') 
+      }
+    }
+    
+    // In proxypay mode validate the private key
+    if (this.mode === 'proxypay') {
+      // Validate private key
+      if (!this.privKey) {
+        throw new Error('Must initiate Presto with valid private key in `proxypay` mode') 
+      }
+
+      // Setup change address
       this.forge.changeTo = this.options.changeAddress ?
         this.options.changeAddress :
         this.address.toString()
     }
 
-    debug.call(this, 'Presto', this.address, this.forge)
+    debug.call(this, 'Presto', this.mode, this.forge)
   }
 
   /**
@@ -175,11 +201,22 @@ class Presto {
    * @returns {Presto}
    */
   createInvoice() {
-    const invoice = {
-      satoshis: Math.max(this.amountDue, DUST_LIMIT + 1),
-      script: this.script,
-      description: this.options.description
+    const invoice = { description: this.options.description, outputs: [] }
+
+    if (this.mode === 'simple') {
+      invoice.outputs = this.forge.outputs.map(o => {
+        return {
+          satoshis: o.satoshis,
+          script: o.getScript().toHex()
+        }
+      })
+    } else {
+      invoice.outputs.push({
+        satoshis: Math.max(this.amountDue, DUST_LIMIT + 1),
+        script: this.script
+      })
     }
+
     debug.call(this, 'Creating invoice', invoice)
 
     api.post('/invoices', { invoice })
@@ -330,10 +367,27 @@ class Presto {
     debug.call(this, 'Iframe msg', event, payload)
     switch(event) {
       case 'invoice.status':
-        this.addInput(payload.utxos)
+        // In simple mode when complete immediately fire sucecss
+        // We itereate over the txns but in practice there will only be one
+        if (this.mode === 'simple' && payload.status === 'complete') {
+          Object.keys(payload.txns)
+            .forEach(txid => {
+              this.$events.emit('success', {
+                txid,
+                rawtx: payload.txns[txid]
+              })
+            })
+        }
+        // In proxypay mode add inputs to the forge instance
+        if (this.mode === 'proxypay') {
+          this.addInput(payload.utxos)
+        }
         break;
       case 'tx.success':
-        this.$events.emit('success', payload.txid)
+        this.$events.emit('success', {
+          txid: payload.txid,
+          rawtx: this.getRawTx()
+        })
         break;
       case 'tx.failure':
         this.$events.emit('error', payload.resultDescription || payload.error || payload)
