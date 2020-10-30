@@ -57,7 +57,7 @@ export default [
     input: 'src/index.js',
     output: {
       file: 'dist/paypresto.dev.js',
-      format: 'iife',
+      format: 'umd',
       name: 'Paypresto',
       globals: {
         bsv: 'bsvjs',

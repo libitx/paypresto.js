@@ -7,7 +7,10 @@
     "usd_rate": "200.00",
     "description": "Test invoice",
     "invoice_paymail": "inv-test01@paypresto.com",
-    "payment_url": "pay:?r=https://www.paypresto.co/invoices/test01/payments",
+    "payment_urls": {
+      "spp": "https://www.paypresto.co/spp/invoices/test01/payments",
+      "opp": "https://www.paypresto.co/opp/invoices/test01/payments"
+    },
     "created_at": "2020-06-01T12:30:00.000Z",
     "expires_at": null,
     "completed_at": null
