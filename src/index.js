@@ -10,22 +10,13 @@ import embed from './ui/embed'
 
 
 // Constants
-const DUST_LIMIT = 546;
-const HTTP_ORIGIN = process.env.API_HOST === undefined ?
-  'https://www.paypresto.co' :
-  process.env.API_HOST;
-
-// Default miner rates
-const minerRates = {
-  data: 0.5,
-  standard: 0.5
-}
+const DUST_LIMIT = 546
+const HTTP_ORIGIN = 'https://www.paypresto.co'
 
 // Presto default options
 const defaults = {
   inputs: [],
   outputs: [],
-  rates: minerRates,
   debug: false
 }
 
@@ -57,10 +48,14 @@ class Presto {
     if (this.options.forge) {
       this.forge = this.options.forge
     } else {
+      const forgeOpts = ['debug', 'rates'].reduce((opts, key) => {
+        if (typeof this.options[key] !== 'undefined') { opts[key] = this.options[key] }
+        return opts
+      }, {})
       this.forge = new Forge({
         inputs: this.options.inputs,
         outputs: this.options.outputs,
-        options: { rates: this.options.rates }
+        options: forgeOpts
       })
     }
 

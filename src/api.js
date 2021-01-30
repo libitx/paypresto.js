@@ -1,9 +1,7 @@
 import fetch from 'node-fetch'
 
 // Constants
-const BASE_URL = process.env.API_HOST === undefined ?
-  'https://www.paypresto.co/api' :
-  `${process.env.API_HOST}/api`;
+const BASE_URL = 'https://www.paypresto.co/api'
 
 /**
  * Module for interfacing with the PayPresto API. Uses browser fetch API.
