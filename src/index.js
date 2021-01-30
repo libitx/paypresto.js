@@ -10,7 +10,7 @@ import embed from './ui/embed'
 
 
 // Constants
-const DUST_LIMIT = 546
+const DUST_LIMIT = 140
 const HTTP_ORIGIN = 'https://www.paypresto.co'
 
 // Presto default options
@@ -196,7 +196,11 @@ class Presto {
    * @returns {Presto}
    */
   createInvoice() {
-    const invoice = { description: this.options.description, outputs: [] }
+    const invoice = {
+      currency: this.options.currency,
+      description: this.options.description,
+      outputs: []
+    }
 
     if (this.mode === 'simple') {
       invoice.outputs = this.forge.outputs.map(o => {
@@ -207,7 +211,7 @@ class Presto {
       })
     } else {
       invoice.outputs.push({
-        satoshis: Math.max(this.amountDue, DUST_LIMIT + 1),
+        satoshis: Math.max(this.amountDue, DUST_LIMIT),
         script: this.script
       })
     }
