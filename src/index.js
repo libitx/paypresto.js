@@ -42,7 +42,6 @@ class Presto {
     this.mode = 'simple'
     this.$events = new energy()
     this.invoice = null
-    this.token = null
 
     // Build the forge, either from existing instance or given params
     if (this.options.forge) {
@@ -214,6 +213,10 @@ class Presto {
         satoshis: Math.max(this.amountDue, DUST_LIMIT),
         script: this.script
       })
+    }
+
+    if (!!this.options.appIdentifier || !!this.options.app_identifier) {
+      invoice.app_identifier = this.options.appIdentifier || this.options.app_identifier
     }
 
     debug.call(this, 'Creating invoice', invoice)
