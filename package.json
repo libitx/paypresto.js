@@ -1,6 +1,6 @@
 {
   "name": "paypresto.js",
-  "version": "0.1.0-beta.11",
+  "version": "0.1.0-beta.13",
   "description": "Build data and complex Bitcoin transactions, and fund them from any wallet.",
   "main": "dist/paypresto.js",
   "module": "src/index.js",
@@ -33,7 +33,7 @@
     "txforge": "^0.2.4"
   },
   "peerDependencies": {
-    "bsv": "2.0.8",
+    "bsv": "^2.0",
     "txforge": "^0.2.4"
   }
 }
