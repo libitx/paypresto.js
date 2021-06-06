@@ -233,7 +233,7 @@ describe('Presto#amount', () => {
       key,
       outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
     })
-    assert.equal(pay.amount, 1096)
+    assert.equal(pay.amount, 1097)
   })
 
   it('calculates accurate fee when input has been added', () => {
@@ -247,7 +247,7 @@ describe('Presto#amount', () => {
       }],
       outputs: [{to: '1DBz6V6CmvjZTvfjvWpvvwuM1X7GkRmWEq', satoshis: 1000}]
     })
-    assert.equal(pay.amount, 1096)
+    assert.equal(pay.amount, 1097)
   })
 })
 
@@ -262,7 +262,7 @@ describe('Presto#amountDue', () => {
   })
 
   it('defaults to same as #amount', () => {
-    assert.equal(pay.amountDue, 1096)
+    assert.equal(pay.amountDue, 1097)
   })
 
   it('calculates remaining unfunded satoshis', () => {
@@ -272,7 +272,7 @@ describe('Presto#amountDue', () => {
       satoshis: 600,
       script: '76a91410bdcba3041b5e5517a58f2e405293c14a7c70c188ac'
     })
-    assert.equal(pay.amountDue, 496)
+    assert.equal(pay.amountDue, 497)
   })
 
   it('returns zero if tx funded', () => {

@@ -42,6 +42,7 @@ class Presto {
     this.mode = 'simple'
     this.$events = new energy()
     this.invoice = null
+    this.funded = false
 
     // Build the forge, either from existing instance or given params
     if (this.options.forge) {
@@ -145,7 +146,7 @@ class Presto {
    * @type {Number}
    */
   get amount() {
-    return this.forge.outputSum + this.forge.estimateFee()
+    return this.forge.outputSum + this.forge.estimateFee(this.forge.options.rates, !this.funded)
   }
 
   /**
@@ -383,6 +384,7 @@ class Presto {
         // In proxypay mode add inputs to the forge instance
         if (this.mode === 'proxypay') {
           this.addInput(payload.utxos)
+          this.funded = true
         }
         break;
       case 'tx.success':
